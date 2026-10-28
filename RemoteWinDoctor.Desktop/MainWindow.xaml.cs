@@ -278,7 +278,8 @@ public partial class MainWindow : Window
             if (d.Pending is long p) metrics.Add(("Pending sectors", p.ToString()));
             if (d.Uncorrectable is long u) metrics.Add(("Unreadable sectors", u.ToString()));
             if (d.MediaErrors is long me) metrics.Add(("Media errors", me.ToString()));
-            if (d.UnsafeShutdowns is long us) metrics.Add(("Unsafe shutdowns", $"{us:N0}"));
+            // ATA attribute 192 counts emergency head retracts (power loss, bumps), not shutdowns as such
+            if (d.UnsafeShutdowns is long us) metrics.Add((d.Source == "ATA" ? "Emergency head retracts" : "Unsafe shutdowns", $"{us:N0}"));
             if (d.AvailableSpare is int sp) metrics.Add(("Spare blocks left", $"{sp}%"));
             if (metrics.Count > 0)
             {

@@ -239,7 +239,7 @@ ConvertTo-Json -InputObject @($result) -Depth 4 -Compress
             if (d.Pending is long p) sb.AppendLine($"  Pending sectors: {p}");
             if (d.Uncorrectable is long u) sb.AppendLine($"  Uncorrectable sectors: {u}");
             if (d.MediaErrors is long me) sb.AppendLine($"  Media errors: {me}");
-            if (d.UnsafeShutdowns is long us) sb.AppendLine($"  Unsafe shutdowns: {us:N0}");
+            if (d.UnsafeShutdowns is long us) sb.AppendLine($"  {(d.Source == "ATA" ? "Emergency head retracts" : "Unsafe shutdowns")}: {us:N0}");
             foreach (var v in d.Volumes) sb.AppendLine($"  {v.Letter} {v.FreeGB:0.#} GB free of {v.SizeGB:0.#} GB");
             foreach (var n in d.Notes) sb.AppendLine($"  Note: {n}");
         }
