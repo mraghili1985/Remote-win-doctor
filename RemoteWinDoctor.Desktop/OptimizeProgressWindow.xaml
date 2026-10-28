@@ -1,0 +1,31 @@
+<Window x:Class="RemoteWinDoctor.Desktop.OptimizeProgressWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Optimizing" Width="480" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" ResizeMode="NoResize"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Language="en-US"
+        Style="{StaticResource WindowTextStyle}">
+
+    <Border Background="#2B2B2B" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1" CornerRadius="10" Margin="12">
+        <Border.Effect>
+            <DropShadowEffect Color="Black" BlurRadius="24" ShadowDepth="6" Opacity="0.5" />
+        </Border.Effect>
+
+        <StackPanel Margin="24,20,24,22">
+            <TextBlock x:Name="TxtTitle" Text="Optimizing" Style="{StaticResource RowTitleStyle}" FontSize="17" FontWeight="SemiBold" />
+            <TextBlock x:Name="TxtTarget" Text="--" Style="{StaticResource RowDescStyle}" Margin="0,4,0,16" />
+
+            <Border Style="{StaticResource ListCardStyle}">
+                <StackPanel x:Name="StepsPanel" />
+            </Border>
+
+            <ProgressBar x:Name="Progress" Minimum="0" Maximum="1" Value="0" Style="{StaticResource LoadingBarStyle}" Margin="0,16,0,0" />
+
+            <Grid Margin="0,16,0,0">
+                <TextBlock x:Name="TxtSummary" Text="Please wait; this can take a minute or two." Style="{StaticResource CaptionStyle}" FontSize="12" VerticalAlignment="Center" Margin="0,0,110,0" />
+                <Button x:Name="BtnClose" Content="Close" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Right" IsEnabled="False" Click="BtnClose_Click" />
+            </Grid>
+        </StackPanel>
+    </Border>
+</Window>

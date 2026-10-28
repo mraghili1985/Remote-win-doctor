@@ -827,44 +827,76 @@ public partial class MainWindow : Window
         if (MessageBox.Show($"Run optimization on {ip}?\nThe state before and after is measured and saved.", "Optimizer", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
             return;
 
+        // Row 0 and the last row wrap the script; rows 1..7 match its "STEP n:" lines
+        string[] steps =
+        {
+            "Record current state",
+            "Stop and disable SysMain",
+            "Clear the Windows Update download cache",
+            "Clear Temp folders",
+            "Switch to the High Performance power plan",
+            "Disable Fast Startup",
+            "ReTrim drive C:",
+            "Limit Defender scans to 25% CPU",
+            "Measure the result"
+        };
+        int last = steps.Length - 1;
+        var progress = new OptimizeProgressWindow(IsLocalTarget(ip) ? $"This PC ({Environment.MachineName})" : ip, steps) { Owner = this };
+        progress.Show();
+
         BtnRunOptimize.IsEnabled = false;
         try
         {
             BtnCompareAfterReboot.IsEnabled = false;
             SetBusy(true, "Recording state before optimizing...", blockView: false);
+            progress.Start(0);
             var before = await TakeSnapshotAsync(ip, user, pass, "before");
+            if (before == null) progress.Fail(0);
 
             SetBusy(true, "Optimizing...", blockView: false);
+            progress.Start(1);
             if (_live != null) { _optStartIndex = _liveCounter; _optEndIndex = null; }
-            var res = await _executor.ExecuteAsync(ip, user, pass, DiagnosticEngine.GetOptimizationScript(), timeoutSeconds: 180);
+            var res = await _executor.ExecuteAsync(ip, user, pass, DiagnosticEngine.GetOptimizationScript(), timeoutSeconds: 180,
+                line =>
+                {
+                    var m = System.Text.RegularExpressions.Regex.Match(line, @"^STEP (\d+):");
+                    if (m.Success) Dispatcher.BeginInvoke(() => progress.Start(int.Parse(m.Groups[1].Value)));
+                });
             LogTerminal(res.Output);
             if (!res.Success && string.IsNullOrWhiteSpace(res.Output))
             {
                 TxtStatus.Text = "Optimization did not run.";
-                MessageBox.Show($"Optimization did not run:\n{res.Error}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                progress.Finish(false, $"Did not run: {res.Error.Trim()}");
                 return;
             }
 
             if (_live != null) _optEndIndex = _liveCounter;
             SetBusy(true, "Recording state after optimizing...", blockView: false);
+            progress.Start(last);
             var after = await TakeSnapshotAsync(ip, user, pass, "after");
 
             if (before != null && after != null)
             {
+                progress.Complete(last);
                 RenderComparison(before, after);
-                TxtStatus.Text = after.FastStartup != before.FastStartup || after.PendingReboot
+                var needsRestart = after.FastStartup != before.FastStartup || after.PendingReboot;
+                TxtStatus.Text = needsRestart
                     ? "Optimization done. Some changes finish after a restart; after restarting, click \"Compare after restart\"."
                     : "Optimization done.";
+                progress.Finish(true, needsRestart ? "Done. Some changes take effect after a restart." : "Done. See \"Before and after\" for the results.");
             }
             else
             {
+                progress.Fail(last);
                 TxtStatus.Text = "Optimization ran, but the before/after measurement failed (details in the console).";
+                progress.Finish(true, "Optimization ran, but the before/after measurement failed.");
             }
         }
         catch (Exception ex)
         {
             TxtStatus.Text = $"Error: {ex.Message}";
             LogTerminal($"[ERR] {ex.Message}");
+            progress.Finish(false, ex.Message);
         }
         finally
         {

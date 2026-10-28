@@ -498,10 +498,16 @@
                                                 <TextBlock Text="Every shutdown becomes a full boot. Takes effect after the next restart." Style="{StaticResource RowDescStyle}" />
                                             </StackPanel>
                                         </Border>
-                                        <Border Style="{StaticResource LastRowStyle}">
+                                        <Border Style="{StaticResource RowStyle}">
                                             <StackPanel>
                                                 <TextBlock Text="ReTrim drive C:" Style="{StaticResource RowTitleStyle}" />
                                                 <TextBlock Text="Sends TRIM to the SSD." Style="{StaticResource RowDescStyle}" />
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Style="{StaticResource LastRowStyle}">
+                                            <StackPanel>
+                                                <TextBlock Text="Limit Defender scans to 25% CPU" Style="{StaticResource RowTitleStyle}" />
+                                                <TextBlock Text="Defender scans keep running, but no longer freeze the PC while they do." Style="{StaticResource RowDescStyle}" />
                                             </StackPanel>
                                         </Border>
                                     </StackPanel>
