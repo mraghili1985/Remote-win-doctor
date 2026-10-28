@@ -30,6 +30,7 @@ public partial class MainWindow : Window
         Closed += (_, _) => _live?.Dispose();
 
         FitToWorkArea();
+        RefreshUsbDrives();
         SizeChanged += (_, _) => ApplyResponsiveLayout();
         StateChanged += (_, _) => KeepMaximizedOffTaskbar();
     }
@@ -1439,20 +1440,240 @@ public partial class MainWindow : Window
     private void BtnRevertUpdates_Click(object sender, RoutedEventArgs e) => RunRescueFix("revert-updates", "Roll back broken updates");
     private void BtnRepairSfc_Click(object sender, RoutedEventArgs e) => RunRescueFix("dism-restore", "SFC and DISM repair");
 
+    /// <summary>Writes the rescue script and its instructions into a folder; returns the script path.</summary>
+    private static string WriteRescueFiles(string folder)
+    {
+        var bat = Path.Combine(folder, "RescueBootDoctor.bat");
+        // cmd.exe reads batch files in the OEM code page; the content is plain ASCII
+        File.WriteAllText(bat, RescueDoctor.GetOfflineRescueScriptContent().Replace("\r\n", "\n").Replace("\n", "\r\n"), System.Text.Encoding.ASCII);
+        File.WriteAllText(Path.Combine(folder, "README-Rescue.txt"), RescueDoctor.GetOfflineRescueReadme().Replace("\r\n", "\n").Replace("\n", "\r\n"), System.Text.Encoding.ASCII);
+        return bat;
+    }
+
     private void BtnSaveRescueScript_Click(object sender, RoutedEventArgs e)
     {
         try
         {
-            var content = RescueDoctor.GetOfflineRescueScriptContent();
-            var targetPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "RescueBootDoctor.bat");
-            File.WriteAllText(targetPath, content, System.Text.Encoding.Default);
-            MessageBox.Show($"Boot rescue script saved to the Desktop:\n{targetPath}\n\nCopy it to a USB stick and run it from WinRE.", "Rescue script saved", MessageBoxButton.OK, MessageBoxImage.Information);
-            LogTerminal($"RescueBootDoctor.bat created on the Desktop: {targetPath}");
+            var bat = WriteRescueFiles(Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
+            MessageBox.Show($"Saved to the Desktop:\n{bat}\nREADME-Rescue.txt\n\nCopy both to a USB stick. README-Rescue.txt explains how to run it on a PC that does not start.", "Rescue script saved", MessageBoxButton.OK, MessageBoxImage.Information);
+            LogTerminal($"Rescue script saved: {bat}");
         }
         catch (Exception ex)
         {
             MessageBox.Show($"Could not save the file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void RefreshUsbDrives()
+    {
+        CmbRescueUsb.Items.Clear();
+        foreach (var d in DriveInfo.GetDrives().Where(d => d.DriveType == DriveType.Removable && d.IsReady))
+        {
+            var label = string.IsNullOrWhiteSpace(d.VolumeLabel) ? "USB drive" : d.VolumeLabel;
+            CmbRescueUsb.Items.Add(new ComboBoxItem { Content = $"{d.Name.TrimEnd('\\')}  {label} ({d.TotalSize / 1e9:0.#} GB)", Tag = d.RootDirectory.FullName });
+        }
+        if (CmbRescueUsb.Items.Count == 0) CmbRescueUsb.Items.Add(new ComboBoxItem { Content = "No USB stick found", IsEnabled = false });
+        CmbRescueUsb.SelectedIndex = 0;
+        BtnSaveRescueUsb.IsEnabled = CmbRescueUsb.Items.Cast<ComboBoxItem>().Any(i => i.Tag is string);
+    }
+
+    private void BtnRefreshUsb_Click(object sender, RoutedEventArgs e) => RefreshUsbDrives();
+
+    private void BtnSaveRescueUsb_Click(object sender, RoutedEventArgs e)
+    {
+        if ((CmbRescueUsb.SelectedItem as ComboBoxItem)?.Tag is not string root) return;
+        try
+        {
+            if (File.Exists(Path.Combine(root, "RescueBootDoctor.bat")) &&
+                MessageBox.Show("This USB stick already has RescueBootDoctor.bat. Replace it with the current version?", "USB rescue stick",
+                    MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+                return;
+            var bat = WriteRescueFiles(root);
+            MessageBox.Show($"The USB stick is ready:\n{bat}\n{Path.Combine(root, "README-Rescue.txt")}\n\nOn the broken PC: start from a Windows installation USB > Repair your computer > Troubleshoot > Command Prompt, then run RescueBootDoctor.bat from this stick. README-Rescue.txt has the full steps.",
+                "USB rescue stick", MessageBoxButton.OK, MessageBoxImage.Information);
+            TxtStatus.Text = $"Rescue files saved to {root}";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not write to the USB stick: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    #endregion
+
+    #region Boot repair for other disks
+
+    private BootScan? _bootScan;
+
+    private async void BtnBootScan_Click(object sender, RoutedEventArgs e) => await RunBootScanAsync();
+
+    private async Task RunBootScanAsync()
+    {
+        SetBusy(true, "Looking for Windows on every disk...");
+        try
+        {
+            var res = await _executor.ExecuteAsync(TxtIp.Text.Trim(), TxtUser.Text.Trim(), TxtPass.Password, BootRepairHelper.GetScanScript(), timeoutSeconds: 90);
+            _bootScan = BootRepairHelper.ParseScan(res.Output);
+            RenderBootScan();
+        }
+        catch (Exception ex)
+        {
+            TxtStatus.Text = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    private void RenderBootScan()
+    {
+        BootScanPanel.Children.Clear();
+        TxtBootScanInfo.Visibility = Visibility.Visible;
+        var scan = _bootScan;
+        if (scan == null)
+        {
+            TxtBootScanInfo.Text = "Could not read the disks.";
+            return;
+        }
+        var installs = scan.Disks.Sum(d => d.Windows.Count);
+        TxtBootScanInfo.Text = $"This PC starts in {scan.Firmware} mode{(scan.Firmware == "UEFI" ? " (boots from GPT disks)" : " (Legacy BIOS, boots from MBR disks)")}. "
+            + $"{installs} Windows installation(s) on {scan.Disks.Count} disk(s)."
+            + (scan.IsAdmin ? "" : " Repairs and the boot menu check need administrator rights: run RemoteWinDoctor as administrator.");
+
+        foreach (var d in scan.Disks)
+        {
+            var card = new Border { Style = (Style)FindResource("GlassPanelStyle"), Margin = new Thickness(0, 0, 0, 10) };
+            var stack = new StackPanel();
+            var head = new StackPanel { Orientation = Orientation.Horizontal };
+            head.Children.Add(new TextBlock { Text = $"Disk {d.Number} · {d.Model}", FontWeight = FontWeights.SemiBold, FontSize = 14, VerticalAlignment = VerticalAlignment.Center });
+            foreach (var tag in new[] { $"{d.SizeGB:0} GB", d.PartitionStyle, d.IsBoot ? "Starts this PC" : null }.Where(t => !string.IsNullOrEmpty(t)))
+                head.Children.Add(new Border { Style = (Style)FindResource("TagStyle"), Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Child = new TextBlock { Text = tag, FontSize = 11, Foreground = (Brush)FindResource("AccentBrush") } });
+            stack.Children.Add(head);
+
+            if (d.IsOffline)
+                stack.Children.Add(BootRow("fail", "The disk is offline",
+                    (d.OfflineReason.Contains("Collision", StringComparison.OrdinalIgnoreCase) ? "It has the same ID as another disk (usually a clone). Bringing it online gives it a new ID." : $"Reason: {d.OfflineReason}.") + " Windows on it can't be seen until it is online.",
+                    ("Bring online", () => RunBootActionAsync("Bring disk online", $"Bring disk {d.Number} ({d.Model}) online and give its partitions drive letters?", BootRepairHelper.GetOnlineScript(d.Number)))));
+            else if (d.UnlabeledBigPartitions > 0)
+                stack.Children.Add(BootRow("warn", $"{d.UnlabeledBigPartitions} large partition(s) without a drive letter", "Windows on them can't be checked until they have a letter.",
+                    ("Assign letters", () => RunBootActionAsync("Assign drive letters", $"Give the partitions on disk {d.Number} drive letters? Nothing on them is changed.", BootRepairHelper.GetOnlineScript(d.Number)))));
+
+            foreach (var w in d.Windows)
+                foreach (var row in WindowsRows(scan, d, w)) stack.Children.Add(row);
+
+            if (!d.IsOffline && d.Windows.Count == 0 && d.UnlabeledBigPartitions == 0)
+                stack.Children.Add(BootRow("info", "No Windows on this disk", "Data disk."));
+
+            card.Child = stack;
+            BootScanPanel.Children.Add(card);
+        }
+    }
+
+    private IEnumerable<UIElement> WindowsRows(BootScan scan, BootDisk d, BootWindows w)
+    {
+        var rows = new List<UIElement>();
+        var title = new TextBlock { Text = $"{w.Version} on {w.Letter}{(w.IsCurrent ? "  (running now)" : "")}", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 12, 0, 0) };
+        rows.Add(title);
+        var uefi = scan.Firmware == "UEFI";
+        var convert = ("Convert to GPT", (Func<Task>)(() => RunBootActionAsync("Convert to GPT",
+            $"Convert disk {d.Number} ({d.Model}) from MBR to GPT?\n\nMicrosoft's mbr2gpt keeps every partition and file, and checks the disk first; nothing changes if the check fails."
+            + (d.IsBoot && !uefi ? "\n\nIMPORTANT: this is the disk the PC starts from in Legacy mode. After converting, open the BIOS and switch to UEFI mode (turn off CSM/Legacy), or the PC will not start." : ""),
+            BootRepairHelper.GetConvertScript(d.Number))));
+
+        if (w.IsCurrent)
+        {
+            if (!uefi && d.PartitionStyle == "MBR")
+                rows.Add(BootRow("warn", "Starts in Legacy BIOS mode from an MBR disk", "Works, but Windows 11 and Secure Boot need UEFI with a GPT disk. Converting keeps all data; afterwards switch the BIOS to UEFI.", convert));
+            else
+                rows.Add(BootRow("ok", "This is the Windows that is running", "It boots correctly."));
+            return rows;
+        }
+
+        var inMenu = scan.MenuDevices.Contains(w.Letter.ToUpperInvariant());
+        if (uefi && d.PartitionStyle == "MBR")
+            rows.Add(BootRow("fail", "This PC starts in UEFI mode, but the disk is MBR", "UEFI can only start Windows from a GPT disk. Convert it first (keeps all data), then create its boot files.", convert));
+        else if (uefi && !d.HasEsp)
+            rows.Add(BootRow("fail", "No EFI boot partition on this disk", d.FreeMB >= 300
+                    ? $"There is {d.FreeMB:0} MB unallocated; a 300 MB boot partition can be created there without touching existing partitions."
+                    : "There is not enough unallocated space (300 MB needed). Shrink a partition by 300 MB in Disk Management first.",
+                ("Create boot files on this disk", () => BootFilesAsync(scan, d, w, ownDisk: true))));
+        else if (!uefi && d.PartitionStyle == "GPT")
+            rows.Add(BootRow("fail", "GPT disk on a Legacy BIOS PC", "Legacy BIOS can only start from MBR. Switch the BIOS to UEFI mode instead; then create boot files here."));
+        else
+            rows.Add(BootRow("info", uefi ? "EFI boot partition present" : "MBR disk, bootable in Legacy mode",
+                "Rebuild the boot files here so this disk can start on its own, even if the other disk is removed.",
+                ("Rebuild boot files on this disk", () => BootFilesAsync(scan, d, w, ownDisk: true))));
+
+        if (!scan.IsAdmin)
+            rows.Add(BootRow("info", "Boot menu not checked", "Needs administrator rights."));
+        else if (inMenu)
+            rows.Add(BootRow("ok", "Listed in the boot menu", "It can be chosen at startup."));
+        else
+            rows.Add(BootRow("warn", "Not in the boot menu", "Add it to choose it at startup next to the current Windows; the current default stays.",
+                ("Add to boot menu", () => BootFilesAsync(scan, d, w, ownDisk: false))));
+        return rows;
+    }
+
+    private Task BootFilesAsync(BootScan scan, BootDisk d, BootWindows w, bool ownDisk) => RunBootActionAsync(
+        ownDisk ? "Create boot files" : "Add to boot menu",
+        ownDisk
+            ? $"Create boot files for {w.Version} on {w.Letter} on its own disk {d.Number}?\n\nThe boot configuration is backed up first; no partition is deleted or formatted"
+              + (scan.Firmware == "UEFI" && !d.HasEsp ? " (a new 300 MB boot partition is made from unallocated space)." : ".")
+            : $"Add {w.Version} on {w.Letter} to the boot menu? The current default Windows stays the default. The boot configuration is backed up first.",
+        BootRepairHelper.GetBootFilesScript(d.Number, w.Letter, ownDisk, scan.Firmware));
+
+    private async Task RunBootActionAsync(string name, string confirm, string script)
+    {
+        if (MessageBox.Show(confirm, name, MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        SetBusy(true, $"{name}...");
+        try
+        {
+            var res = await _executor.ExecuteAsync(TxtIp.Text.Trim(), TxtUser.Text.Trim(), TxtPass.Password, script, timeoutSeconds: 300);
+            LogTerminal(res.Output);
+            var steps = OfficeNetworkWizard.ParseSteps(res.Output);
+            if (steps.Count == 0) steps.Add(new WizardStep("fail", $"{name} did not run", res.Error.Trim()));
+            RenderWizardSteps(BootActionResults, BootActionResultsPanel, steps);
+            TxtStatus.Text = steps.Any(s => s.Status == "fail") ? $"{name}: see the problems listed." : $"{name}: done.";
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+        await RunBootScanAsync();
+    }
+
+    private Border BootRow(string status, string title, string detail, params (string Label, Func<Task> Action)[] actions)
+    {
+        var (glyph, brush) = status switch
+        {
+            "ok" => ("", "SuccessBrush"),
+            "warn" => ("", "WarningBrush"),
+            "fail" => ("", "DangerBrush"),
+            _ => ("", "AccentBrush")
+        };
+        var row = new Border { Padding = new Thickness(0, 8, 0, 0) };
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.Children.Add(new TextBlock { Text = glyph, Style = (Style)FindResource("IconStyle"), Foreground = (Brush)FindResource(brush), VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 2, 12, 0) });
+        var text = new StackPanel { Margin = new Thickness(0, 0, 12, 0) };
+        text.Children.Add(new TextBlock { Text = title, TextWrapping = TextWrapping.Wrap });
+        if (!string.IsNullOrWhiteSpace(detail)) text.Children.Add(new TextBlock { Text = detail, Style = (Style)FindResource("RowDescStyle") });
+        Grid.SetColumn(text, 1);
+        grid.Children.Add(text);
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Top };
+        foreach (var (label, action) in actions)
+        {
+            var b = new Button { Content = label, Style = (Style)FindResource("SecondaryButtonStyle"), Margin = new Thickness(8, 0, 0, 0) };
+            b.Click += async (_, _) => await action();
+            buttons.Children.Add(b);
+        }
+        Grid.SetColumn(buttons, 2);
+        grid.Children.Add(buttons);
+        row.Child = grid;
+        return row;
     }
 
     #endregion

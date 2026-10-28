@@ -1,4 +1,4 @@
-namespace RemoteWinDoctor.Services;
+﻿namespace RemoteWinDoctor.Services;
 
 public class RescueDoctor
 {
@@ -100,7 +100,7 @@ Write-Host '[SUCCESS] Windows RE has been verified and enabled.' -ForegroundColo
 Write-Host '[START] Rebuilding UEFI BCD Bootloader and refreshing boot files...' -ForegroundColor Cyan
 
 # Re-inject EFI boot files from running Windows
-$bcdRes = cmd.exe /c 'bcdboot C:\Windows /f ALL /c' 2>&1 | Out-String
+$bcdRes = cmd.exe /c ""bcdboot $env:SystemRoot /f ALL /c"" 2>&1 | Out-String
 Write-Host $bcdRes -ForegroundColor Green
 
 # Remove stuck SafeBoot flags if present
@@ -132,6 +132,7 @@ Write-Host '[SUCCESS] Stuck update loops reverted. Windows will boot cleanly on 
 ";
 
             case "repair-sysfiles":
+            case "dism-restore":   // name the desktop button sends
                 return @"
 Write-Host '[START] Full System File & Component Store Integrity Repair (SFC + DISM)...' -ForegroundColor Cyan
 
@@ -158,7 +159,7 @@ cmd.exe /c 'reagentc /enable' | Out-Null
 Write-Host '[OK] Windows RE partition active.' -ForegroundColor Green
 
 Write-Host '>>> 2. Refreshing UEFI Bootloader (bcdboot)...' -ForegroundColor Yellow
-cmd.exe /c 'bcdboot C:\Windows /f ALL /c' | Out-Null
+cmd.exe /c ""bcdboot $env:SystemRoot /f ALL /c"" | Out-Null
 cmd.exe /c 'bcdedit /deletevalue {current} safeboot' 2>&1 | Out-Null
 cmd.exe /c 'bcdedit /timeout 5' | Out-Null
 Write-Host '[OK] Boot files refreshed.' -ForegroundColor Green
@@ -174,59 +175,127 @@ Write-Host '=============================================================' -Fore
         }
     }
 
+    /// <summary>
+    /// Batch file run from a USB stick in WinRE / Windows Setup's Command Prompt. Finds every
+    /// Windows installation (X: is the boot environment itself and is skipped), lets the user
+    /// pick one when there are several, and asks before each repair step.
+    /// </summary>
     public static string GetOfflineRescueScriptContent()
     {
         return @"@echo off
-title Emergency Windows Rescue & Boot Doctor
+setlocal EnableDelayedExpansion
+title RemoteWinDoctor - Offline Boot Rescue
 color 0b
 echo ======================================================================
-echo           EMERGENCY WINDOWS RESCUE ^& BOOT DOCTOR
-echo      Automated Offline Repair Tool for Unbootable Systems
+echo              RemoteWinDoctor - Offline Boot Rescue
+echo      Repairs a Windows installation that no longer starts
 echo ======================================================================
 echo.
-echo [!] Detecting Windows installation drive...
-set TARGET_DRIVE=C:
-if not exist C:\Windows\System32\cmd.exe (
-    set TARGET_DRIVE=D:
+
+rem Drive letters change inside the recovery environment, so look at every letter.
+rem X: is the recovery/USB environment itself.
+set COUNT=0
+echo Windows installations found:
+for %%D in (C D E F G H I J K L M N O P Q R S T U V W Y Z) do (
+    if exist %%D:\Windows\System32\ntoskrnl.exe (
+        set /a COUNT+=1
+        set WIN!COUNT!=%%D:
+        echo   [!COUNT!] %%D:\Windows
+    )
 )
-if not exist D:\Windows\System32\cmd.exe (
-    set TARGET_DRIVE=E:
+if %COUNT%==0 (
+    echo   none
+    echo.
+    echo No Windows installation was found. Check that the disk is connected
+    echo and visible in the BIOS. Nothing was changed.
+    pause
+    exit /b 1
 )
-echo [*] Target Windows found at: %TARGET_DRIVE%\Windows
+
+set TARGET=%WIN1%
+if %COUNT%==1 goto chosen
+echo.
+set /p PICK=Several installations were found. Type the number to repair and press Enter:
+set TARGET=!WIN%PICK%!
+if ""%TARGET%""=="""" (
+    echo Invalid choice. Nothing was changed.
+    pause
+    exit /b 1
+)
+:chosen
+echo.
+echo Selected: %TARGET%\Windows
+set FW=Legacy BIOS
+for /f ""tokens=3"" %%A in ('reg query HKLM\System\CurrentControlSet\Control /v PEFirmwareType 2^>nul ^| find ""PEFirmwareType""') do if ""%%A""==""0x2"" set FW=UEFI
+if /i ""%firmware_type%""==""UEFI"" set FW=UEFI
+echo Firmware: %FW%
+echo.
+echo Each step asks first. Press Y to run it or N to skip it.
 echo.
 
-echo [1/5] Reverting broken/pending update loop actions (DISM)...
-dism.exe /Image:%TARGET_DRIVE%\ /Cleanup-Image /RevertPendingActions
-echo [OK] Update revert check completed.
-echo.
+call :ask ""[1/4] Undo unfinished Windows updates (fixes restart loops after an update)?""
+if !errorlevel!==1 (
+    dism.exe /Image:%TARGET%\ /Cleanup-Image /RevertPendingActions
+    echo.
+)
 
-echo [2/5] Rebuilding UEFI BCD Bootloader from scratch...
-bcdboot %TARGET_DRIVE%\Windows /f ALL /c
-bcdedit /timeout 5
-bcdedit /deletevalue {default} safeboot 2>nul
-echo [OK] UEFI BCD Bootloader reconstructed.
-echo.
+call :ask ""[2/4] Rebuild the boot files for %TARGET%\Windows (fixes 'no boot device' and BCD errors)?""
+if !errorlevel!==1 (
+    bcdboot %TARGET%\Windows /f ALL
+    bcdedit /deletevalue {default} safeboot >nul 2>&1
+    bcdedit /timeout 5 >nul 2>&1
+    echo.
+)
 
-echo [3/5] Scanning and repairing offline protected system files (SFC)...
-sfc /scannow /offbootdir=%TARGET_DRIVE%\ /offwindir=%TARGET_DRIVE%\Windows
-echo [OK] SFC offline scan finished.
-echo.
+call :ask ""[3/4] Check and repair Windows system files (SFC, takes 10-30 minutes)?""
+if !errorlevel!==1 (
+    sfc /scannow /offbootdir=%TARGET%\ /offwindir=%TARGET%\Windows
+    echo.
+)
 
-echo [4/5] Checking file system integrity on %TARGET_DRIVE%...
-chkdsk %TARGET_DRIVE% /f /x
-echo [OK] Disk integrity check finished.
-echo.
-
-echo [5/5] Re-enabling Windows RE Recovery Agent...
-reagentc /enable /osdir %TARGET_DRIVE%\Windows 2>nul
-echo.
+call :ask ""[4/4] Check the disk for file system errors (CHKDSK, can take an hour on a hard drive)?""
+if !errorlevel!==1 (
+    chkdsk %TARGET% /f /x
+    echo.
+)
 
 echo ======================================================================
-echo   RESCUE OPERATION FINISHED! Remove USB and Restart Computer.
+echo   Finished. Remove the USB stick and restart the computer.
 echo ======================================================================
 pause
+exit /b 0
+
+:ask
+choice /c YN /m ""%~1""
+exit /b %errorlevel%
 ";
     }
+
+    /// <summary>Instructions saved next to the rescue script on the USB stick.</summary>
+    public static string GetOfflineRescueReadme() => @"RemoteWinDoctor - Offline Boot Rescue
+=====================================
+
+Use this when Windows no longer starts (boot loop, ""no boot device"", BCD error,
+stuck after an update).
+
+You need a Windows installation USB (or the PC's own recovery screen) and this USB
+stick with RescueBootDoctor.bat on it.
+
+1. Plug in the Windows installation USB and start the PC from it
+   (boot menu key is usually F12, F11, F9 or Esc).
+2. On the first setup screen click Next, then ""Repair your computer"" (bottom left).
+   (If Windows shows its own blue recovery screen instead, start from step 3.)
+3. Choose Troubleshoot > Advanced options > Command Prompt.
+4. Find this USB stick: type  D:  and Enter, then  dir  - repeat with E:, F:, ...
+   until you see RescueBootDoctor.bat.
+5. Type  RescueBootDoctor.bat  and press Enter.
+6. If several Windows installations are listed, type the number of the one to repair.
+   Each repair step asks first: press Y to run it, N to skip it.
+7. When it says Finished, remove the USB sticks and restart.
+
+The script never deletes your files. It only repairs boot files, system files,
+unfinished updates and file system errors.
+";
 }
 
 public class RescueFixRequest

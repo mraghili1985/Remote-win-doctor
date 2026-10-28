@@ -688,7 +688,7 @@
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                                 <StackPanel Margin="0,0,16,0">
                                                     <TextBlock Text="Rebuild BCD" Style="{StaticResource RowTitleStyle}" />
-                                                    <TextBlock Text="bcdboot C:\Windows /f ALL for a Windows install that will not boot." Style="{StaticResource RowDescStyle}" />
+                                                    <TextBlock Text="Recreates the boot files of the running Windows (bcdboot /f ALL) and clears a stuck Safe Mode flag." Style="{StaticResource RowDescStyle}" />
                                                 </StackPanel>
                                                 <Button Grid.Column="1" Content="Run" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Center" Click="BtnRebuildBcd_Click" />
                                             </Grid>
@@ -717,13 +717,33 @@
                                             <Grid>
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                                 <StackPanel Margin="0,0,16,0">
-                                                    <TextBlock Text="Offline rescue script" Style="{StaticResource RowTitleStyle}" />
-                                                    <TextBlock Text="Saves RescueBootDoctor.bat to the Desktop, to run from a USB stick in the WinRE Command Prompt." Style="{StaticResource RowDescStyle}" />
+                                                    <TextBlock Text="USB rescue stick" Style="{StaticResource RowTitleStyle}" />
+                                                    <TextBlock Text="Puts RescueBootDoctor.bat and step-by-step instructions on a USB stick, for PCs that no longer start. It finds the Windows drive by itself and asks before every repair. Your files on the stick are not touched." Style="{StaticResource RowDescStyle}" />
+                                                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                                        <ComboBox x:Name="CmbRescueUsb" Width="230" />
+                                                        <Button Content="&#xE72C;" FontFamily="{StaticResource IconFont}" Style="{StaticResource GhostButtonStyle}" ToolTip="Refresh drive list" Margin="4,0,0,0" Click="BtnRefreshUsb_Click" />
+                                                        <Button x:Name="BtnSaveRescueUsb" Content="Save to USB" Style="{StaticResource PrimaryButtonStyle}" Margin="8,0,0,0" Click="BtnSaveRescueUsb_Click" />
+                                                        <Button Content="Save to Desktop" Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0" Click="BtnSaveRescueScript_Click" />
+                                                    </StackPanel>
                                                 </StackPanel>
-                                                <Button Grid.Column="1" Content="Save" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Center" Click="BtnSaveRescueScript_Click" />
                                             </Grid>
                                         </Border>
                                     </StackPanel>
+                                </Border>
+
+                                <!-- Windows installs on every disk: boot repair for new/cloned disks and MBR to GPT -->
+                                <Grid Margin="0,28,0,10">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,16,0">
+                                        <TextBlock Text="Windows on other disks" Style="{StaticResource SectionTitleStyle}" Margin="0" />
+                                        <TextBlock Text="For a new or cloned disk that does not start: finds every Windows installation, explains why it does not boot, and fixes the boot files, boot menu or partition style (MBR to GPT, keeps all data). The boot configuration is backed up before any change." Style="{StaticResource RowDescStyle}" />
+                                    </StackPanel>
+                                    <Button x:Name="BtnBootScan" Grid.Column="1" Content="Scan disks" Style="{StaticResource PrimaryButtonStyle}" VerticalAlignment="Top" Click="BtnBootScan_Click" />
+                                </Grid>
+                                <TextBlock x:Name="TxtBootScanInfo" Style="{StaticResource RowDescStyle}" Margin="0,0,0,8" Visibility="Collapsed" />
+                                <StackPanel x:Name="BootScanPanel" />
+                                <Border x:Name="BootActionResults" Style="{StaticResource ListCardStyle}" Margin="0,4,0,0" Visibility="Collapsed">
+                                    <StackPanel x:Name="BootActionResultsPanel" />
                                 </Border>
                             </StackPanel>
                         </ScrollViewer>
