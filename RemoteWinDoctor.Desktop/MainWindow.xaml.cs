@@ -1294,23 +1294,24 @@ public partial class MainWindow : Window
     private void BtnToolMemTest_Click(object sender, RoutedEventArgs e) => RunToolboxTool(ToolboxHelper.GetScheduleMemoryTestScript(), "Schedule RAM test");
     private void BtnToolRecentErrors_Click(object sender, RoutedEventArgs e) => RunToolboxTool(ToolboxHelper.GetRecentErrorsScript(), "Recent Windows errors");
     private void BtnToolLargestFiles_Click(object sender, RoutedEventArgs e) => RunToolboxTool(ToolboxHelper.GetLargestFilesScript(), "Largest files on C:");
-    private void BtnToolStartupItems_Click(object sender, RoutedEventArgs e) => RunToolboxTool(ToolboxHelper.GetStartupItemsScript(), "Startup programs");
     private void BtnToolExportDrivers_Click(object sender, RoutedEventArgs e) => RunToolboxTool(ToolboxHelper.GetExportDriversScript(), "Driver backup");
     private void BtnToolDuplicateFiles_Click(object sender, RoutedEventArgs e) => RunToolboxTool(ToolboxHelper.GetDuplicateFilesScript(), "Duplicate file scan");
 
-    private void BtnToolDisableStartup_Click(object sender, RoutedEventArgs e)
+    private void BtnToolStartupManager_Click(object sender, RoutedEventArgs e)
     {
-        var name = TxtStartupItemName.Text.Trim();
-        if (string.IsNullOrWhiteSpace(name))
+        var ip = TxtIp.Text.Trim();
+        var user = TxtUser.Text.Trim();
+        var pass = TxtPass.Password;
+        bool isLocal = IsLocalTarget(ip);
+        if (!isLocal && string.IsNullOrEmpty(pass))
         {
-            MessageBox.Show("Enter the exact startup item name (from the list) in the box first.", "Name missing", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show($"To manage startup programs on {ip}, first enter that system's password in the target card.",
+                "Password missing", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        if (MessageBox.Show($"Disable startup item \"{name}\"?", "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
-            return;
-
-        RunToolboxTool(ToolboxHelper.GetDisableStartupItemScript(name), $"Disable startup item \"{name}\"");
+        var label = isLocal ? $"This PC ({Environment.MachineName})" : ip;
+        new StartupManagerWindow(label, script => _executor.ExecuteAsync(ip, user, pass, script, timeoutSeconds: 60)) { Owner = this }.ShowDialog();
     }
 
     private void BtnToolClearOutput_Click(object sender, RoutedEventArgs e)

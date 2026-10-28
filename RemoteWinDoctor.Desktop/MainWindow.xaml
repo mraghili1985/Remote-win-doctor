@@ -544,17 +544,8 @@
                                 <Border Style="{StaticResource GlassPanelStyle}" Margin="0,0,6,0">
                                     <StackPanel>
                                         <TextBlock Text="Startup programs" Style="{StaticResource RowTitleStyle}" />
-                                        <TextBlock Text="Get the list, enter the exact name, then disable it." Style="{StaticResource RowDescStyle}" />
-                                        <Grid Margin="0,12,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Button x:Name="BtnToolStartupItems" Content="List" Style="{StaticResource SecondaryButtonStyle}" Click="BtnToolStartupItems_Click" />
-                                            <TextBox x:Name="TxtStartupItemName" Grid.Column="1" Margin="8,0" FlowDirection="LeftToRight" />
-                                            <Button x:Name="BtnToolDisableStartup" Grid.Column="2" Content="Disable" Style="{StaticResource DangerButtonStyle}" Click="BtnToolDisableStartup_Click" />
-                                        </Grid>
+                                        <TextBlock Text="See which programs start with Windows and switch them on or off, like Task Manager." Style="{StaticResource RowDescStyle}" />
+                                        <Button x:Name="BtnToolStartupManager" Content="Manage startup programs" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left" Margin="0,12,0,0" Click="BtnToolStartupManager_Click" />
                                     </StackPanel>
                                 </Border>
                                 <Border Style="{StaticResource GlassPanelStyle}" Margin="6,0,0,0">

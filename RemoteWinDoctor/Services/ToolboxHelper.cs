@@ -1,5 +1,20 @@
 namespace RemoteWinDoctor.Services;
 
+/// <summary>One row of <see cref="ToolboxHelper.GetStartupEntriesScript"/> output.</summary>
+public class StartupEntry
+{
+    public string Name { get; set; } = "";
+    /// <summary>Value name under the StartupApproved key (the Run value name, or the file name for Startup-folder items).</summary>
+    public string ValueName { get; set; } = "";
+    public string Command { get; set; } = "";
+    public string Publisher { get; set; } = "";
+    public string Description { get; set; } = "";
+    /// <summary>"All users" or the account name the entry belongs to.</summary>
+    public string Scope { get; set; } = "";
+    public string ApprovedKey { get; set; } = "";
+    public bool Enabled { get; set; }
+}
+
 /// <summary>
 /// One-shot diagnostic/action scripts for the System Toolbox tab. Each method returns a
 /// self-contained PowerShell script that writes human-readable status lines via Write-Host,
@@ -119,46 +134,90 @@ Get-ChildItem -Path 'C:\' -Recurse -File -ErrorAction SilentlyContinue |
 ";
     }
 
-    public static string GetStartupItemsScript()
+    /// <summary>
+    /// Lists startup programs the way Task Manager's Startup tab does, as a JSON array of
+    /// <see cref="StartupEntry"/>. On/off state comes from the Explorer\StartupApproved keys
+    /// (first byte even = enabled, odd = disabled). Every loaded user hive is read, not HKCU,
+    /// because over WinRM HKCU is the remote login account rather than the person at the PC.
+    /// </summary>
+    public static string GetStartupEntriesScript()
     {
         return @"
-Write-Host 'Startup programs (Task Manager > Startup equivalent):'
-Get-CimInstance Win32_StartupCommand | ForEach-Object {
-    Write-Host ""  $($_.Name) | $($_.Command) | Location: $($_.Location)""
+$ErrorActionPreference = 'SilentlyContinue'
+$approvedRel = 'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved'
+$items = New-Object System.Collections.ArrayList
+$shell = New-Object -ComObject WScript.Shell
+
+function Get-Target([string]$cmd) {
+    if ($cmd -match '^\s*""([^""]+)""') { return $Matches[1] }
+    if ($cmd -match '^\s*(.+?\.exe)') { return $Matches[1] }
+    return $cmd.Trim()
 }
+function Test-Enabled([string]$key, [string]$valueName) {
+    $v = (Get-ItemProperty -LiteralPath $key -Name $valueName).$valueName
+    if ($v -is [byte[]] -and $v.Length -gt 0) { return ($v[0] % 2) -eq 0 }
+    return $true
+}
+function Add-Entry($name, $valueName, $cmd, $target, $scope, $approvedKey) {
+    $path = [Environment]::ExpandEnvironmentVariables($target)
+    $vi = $null
+    if ($path -and (Test-Path -LiteralPath $path -PathType Leaf)) { $vi = (Get-Item -LiteralPath $path).VersionInfo }
+    [void]$items.Add([PSCustomObject]@{
+        Name = $name; ValueName = $valueName; Command = ""$cmd""
+        Publisher = ""$($vi.CompanyName)"".Trim(); Description = ""$($vi.FileDescription)"".Trim()
+        Scope = $scope; ApprovedKey = $approvedKey; Enabled = (Test-Enabled $approvedKey $valueName)
+    })
+}
+function Read-RunKey($runKey, $approvedKey, $scope) {
+    $k = Get-Item -LiteralPath $runKey
+    if (-not $k) { return }
+    foreach ($n in $k.GetValueNames()) {
+        if (-not $n) { continue }
+        $cmd = ""$($k.GetValue($n))""
+        Add-Entry $n $n $cmd (Get-Target $cmd) $scope $approvedKey
+    }
+}
+function Read-Folder($folder, $approvedKey, $scope) {
+    if (-not $folder -or -not (Test-Path -LiteralPath $folder)) { return }
+    foreach ($f in Get-ChildItem -LiteralPath $folder -File | Where-Object { $_.Name -ne 'desktop.ini' }) {
+        $target = $f.FullName
+        if ($f.Extension -eq '.lnk') { $t = $shell.CreateShortcut($f.FullName).TargetPath; if ($t) { $target = $t } }
+        Add-Entry $f.BaseName $f.Name $target $target $scope $approvedKey
+    }
+}
+
+$hklm = 'Registry::HKEY_LOCAL_MACHINE'
+Read-RunKey ""$hklm\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"" ""$hklm\$approvedRel\Run"" 'All users'
+Read-RunKey ""$hklm\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run"" ""$hklm\$approvedRel\Run32"" 'All users'
+Read-Folder ([Environment]::GetFolderPath('CommonStartup')) ""$hklm\$approvedRel\StartupFolder"" 'All users'
+
+foreach ($u in Get-ChildItem 'Registry::HKEY_USERS' | Where-Object { $_.PSChildName -match '^S-1-5-21-[\d-]+$' }) {
+    $sid = $u.PSChildName
+    $hku = ""Registry::HKEY_USERS\$sid""
+    $user = try { ((New-Object System.Security.Principal.SecurityIdentifier($sid)).Translate([System.Security.Principal.NTAccount]).Value -split '\\')[-1] } catch { $sid }
+    Read-RunKey ""$hku\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"" ""$hku\$approvedRel\Run"" $user
+    $profileDir = (Get-ItemProperty -LiteralPath ""$hklm\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$sid"").ProfileImagePath
+    if ($profileDir) { Read-Folder ""$profileDir\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup"" ""$hku\$approvedRel\StartupFolder"" $user }
+}
+
+ConvertTo-Json -InputObject @($items | Sort-Object Name) -Depth 3 -Compress
 ";
     }
 
-    public static string GetDisableStartupItemScript(string itemName)
+    /// <summary>
+    /// Turns a startup entry on or off exactly like Task Manager: writes the StartupApproved flag
+    /// and leaves the program's own Run value or shortcut untouched, so it is fully reversible.
+    /// </summary>
+    public static string GetSetStartupEntryScript(string approvedKey, string valueName, bool enable)
     {
-        var escaped = itemName.Replace("'", "''");
+        static string Q(string s) => s.Replace("'", "''");
         return $@"
-$name = '{escaped}'
-$found = $false
-
-foreach ($hive in @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Run', 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run')) {{
-    if (Test-Path $hive) {{
-        $prop = Get-ItemProperty -Path $hive -ErrorAction SilentlyContinue
-        if ($prop -and ($prop.PSObject.Properties.Name -contains $name)) {{
-            Remove-ItemProperty -Path $hive -Name $name -ErrorAction SilentlyContinue
-            Write-Host ""[OK] Removed registry Run entry '$name' from $hive""
-            $found = $true
-        }}
-    }}
-}}
-
-foreach ($folder in @([Environment]::GetFolderPath('Startup'), [Environment]::GetFolderPath('CommonStartup'))) {{
-    $shortcut = Join-Path $folder ""$name.lnk""
-    if (Test-Path $shortcut) {{
-        Remove-Item $shortcut -Force -ErrorAction SilentlyContinue
-        Write-Host ""[OK] Removed startup shortcut: $shortcut""
-        $found = $true
-    }}
-}}
-
-if (-not $found) {{
-    Write-Host ""[WARNING] No startup entry named '$name' was found (check exact name from the list above).""
-}}
+$key = '{Q(approvedKey)}'
+$name = '{Q(valueName)}'
+if (-not (Test-Path -LiteralPath $key)) {{ New-Item -Path $key -Force | Out-Null }}
+$bytes = {(enable ? "[byte[]](2,0,0,0,0,0,0,0,0,0,0,0)" : "[byte[]](3,0,0,0) + [BitConverter]::GetBytes([DateTime]::Now.ToFileTime())")}
+New-ItemProperty -LiteralPath $key -Name $name -PropertyType Binary -Value $bytes -Force | Out-Null
+Write-Output 'OK'
 ";
     }
 
