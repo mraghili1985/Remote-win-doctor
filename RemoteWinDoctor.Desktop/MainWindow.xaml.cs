@@ -95,7 +95,7 @@ public partial class MainWindow : Window
         SetCardColumns(GridDiagCards, narrow ? 2 : 4);
         SetCardColumns(GridRamSlots, narrow ? 2 : 4);
         GridLiveCharts.Columns = contentWidth < 640 ? 1 : 3;
-        GridToolboxCards.Columns = contentWidth < 640 ? 1 : 2;
+        GridToolboxCards.Columns = contentWidth < 760 ? 1 : 3;
         _narrowCards = narrow;
     }
 
@@ -2088,6 +2088,23 @@ public partial class MainWindow : Window
 
         var label = isLocal ? $"This PC ({Environment.MachineName})" : ip;
         new StartupManagerWindow(label, script => _executor.ExecuteAsync(ip, user, pass, script, timeoutSeconds: 60)) { Owner = this }.ShowDialog();
+    }
+
+    private void BtnToolRepairs_Click(object sender, RoutedEventArgs e)
+    {
+        var ip = TxtIp.Text.Trim();
+        var user = TxtUser.Text.Trim();
+        var pass = TxtPass.Password;
+        bool isLocal = IsLocalTarget(ip);
+        if (!isLocal && string.IsNullOrEmpty(pass))
+        {
+            MessageBox.Show($"To run Windows repairs on {ip}, first enter that system's password in the target card.",
+                "Password missing", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var label = isLocal ? $"This PC ({Environment.MachineName})" : ip;
+        new WindowsRepairsWindow(label, isLocal, (script, timeout) => _executor.ExecuteAsync(ip, user, pass, script, timeoutSeconds: timeout)) { Owner = this }.ShowDialog();
     }
 
     private void BtnToolClearOutput_Click(object sender, RoutedEventArgs e)
