@@ -1476,6 +1476,8 @@ public partial class MainWindow : Window
             TxtWizHostNotes.Text = string.Join("\n", notes.Select(n => "• " + n));
             WizHostNotes.Visibility = notes.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
+            UpdateWizardIpPanel(info, isLocal);
+
             CmbWizPrinter.Items.Clear();
             CmbWizPrinter.Items.Add(NoPrinter);
             foreach (var p in info.Printers) CmbWizPrinter.Items.Add(p.Name);
@@ -1575,6 +1577,72 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             TxtStatus.Text = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    /// <summary>
+    /// Shared printers and folders are reached by IP, so a host whose DHCP address changes breaks
+    /// every client. Router reservation is the standard fix and is always explained; a fixed IP set
+    /// from the app is only offered for this PC on a cable, never for laptops or over WinRM.
+    /// </summary>
+    private void UpdateWizardIpPanel(WizardHostInfo info, bool isLocal)
+    {
+        var lan = info.Adapters.FirstOrDefault(a => a.Gateway.Length > 0) ?? info.Adapters.FirstOrDefault();
+        BtnWizStaticIp.Visibility = Visibility.Collapsed;
+        if (lan == null || !lan.Dhcp)
+        {
+            WizIpPanel.Visibility = lan == null ? Visibility.Collapsed : Visibility.Visible;
+            TxtWizIpTitle.Text = "Fixed address: OK";
+            TxtWizIpTitle.Foreground = (Brush)FindResource("SuccessBrush");
+            TxtWizIpInfo.Text = lan == null ? "" : $"{lan.Ip} is set manually, so other PCs will always find the host there.";
+            return;
+        }
+
+        WizIpPanel.Visibility = Visibility.Visible;
+        TxtWizIpTitle.Text = "The host's address can change";
+        TxtWizIpTitle.Foreground = (Brush)FindResource("WarningBrush");
+        var router = lan.Gateway.Length > 0 ? lan.Gateway : "the router";
+        var lines = new List<string>
+        {
+            $"{lan.Ip} comes from the router automatically (DHCP). If it changes, the shared printer and folder stop working on the other PCs.",
+            "Recommended: reserve the address in the router (works for laptops too):",
+            $"  1. Open http://{router} in a browser and sign in to the router.",
+            "  2. Find DHCP / LAN settings > Address Reservation (also called Static Lease or DHCP Binding).",
+            $"  3. Add: MAC {lan.Mac}  →  IP {lan.Ip}, then save."
+        };
+        if (isLocal && !info.IsLaptop && !lan.Wireless)
+        {
+            lines.Add("Or let RemoteWinDoctor set a fixed address on this PC (picked from .200-.250, router and DNS kept, undone automatically if the connection fails).");
+            BtnWizStaticIp.Tag = lan.Name;
+            BtnWizStaticIp.Visibility = Visibility.Visible;
+        }
+        else if (isLocal)
+            lines.Add("A fixed address set inside Windows is not offered here because this PC is a laptop or on Wi-Fi: it would lose the internet on other networks.");
+        else
+            lines.Add("A fixed address can't be set from here: changing the host's IP would cut this remote connection. Use the router reservation.");
+        TxtWizIpInfo.Text = string.Join("\n", lines);
+    }
+
+    private async void BtnWizStaticIp_Click(object sender, RoutedEventArgs e)
+    {
+        if (BtnWizStaticIp.Tag is not string adapter) return;
+        if (MessageBox.Show($"Set a fixed IP address on \"{adapter}\"?\n\nAn unused address between .200 and .250 is chosen, the router and DNS stay the same, and the change is undone automatically if the router stops answering. The network may drop for a few seconds.\n\nRequires running RemoteWinDoctor as administrator.",
+                "Fixed IP", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            return;
+
+        SetBusy(true, "Setting a fixed IP...");
+        try
+        {
+            var res = await _executor.ExecuteAsync("127.0.0.1", "", "", OfficeNetworkWizard.GetStaticIpScript(adapter), timeoutSeconds: 120);
+            LogTerminal(res.Output);
+            var steps = OfficeNetworkWizard.ParseSteps(res.Output);
+            if (steps.Count == 0) steps.Add(new WizardStep("fail", "Could not change the address", res.Error.Trim()));
+            RenderWizardSteps(WizHostResults, WizHostResultsPanel, steps);
+            TxtStatus.Text = steps.Any(s => s.Status == "ok") ? "Fixed IP set. Click \"Check host\" again to use the new address." : "The address was not changed.";
         }
         finally
         {

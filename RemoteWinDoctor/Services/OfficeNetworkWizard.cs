@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace RemoteWinDoctor.Services;
 
@@ -11,6 +11,7 @@ public class WizardHostInfo
     public List<WizardPrinter> Printers { get; set; } = new();
     public List<WizardShare> Shares { get; set; } = new();
     public int PublicSharingRules { get; set; }
+    public bool IsLaptop { get; set; }
 }
 
 public class WizardAdapter
@@ -18,6 +19,12 @@ public class WizardAdapter
     public string Name { get; set; } = "";
     public string Ip { get; set; } = "";
     public string Category { get; set; } = "";
+    public bool Dhcp { get; set; }
+    public string Mac { get; set; } = "";
+    public string Gateway { get; set; } = "";
+    public int Prefix { get; set; }
+    public List<string> Dns { get; set; } = new();
+    public bool Wireless { get; set; }
 }
 
 public class WizardPrinter
@@ -59,8 +66,13 @@ function Report($status, $title, $detail) { Write-Output ""RWD|$status|$title|$d
 $ErrorActionPreference = 'SilentlyContinue'
 $adapters = foreach ($a in Get-NetAdapter -Physical | Where-Object Status -eq 'Up') {
     $ip = (Get-NetIPAddress -InterfaceIndex $a.ifIndex -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.254*' } | Select-Object -First 1).IPAddress
+    $addr = Get-NetIPAddress -InterfaceIndex $a.ifIndex -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.254*' } | Select-Object -First 1
     $cat = (Get-NetConnectionProfile -InterfaceIndex $a.ifIndex).NetworkCategory
-    if ($ip) { [PSCustomObject]@{ Name = $a.Name; Ip = $ip; Category = ""$cat"" } }
+    $gw = (Get-NetRoute -InterfaceIndex $a.ifIndex -DestinationPrefix '0.0.0.0/0' | Sort-Object RouteMetric | Select-Object -First 1).NextHop
+    $dhcp = ""$((Get-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily IPv4).Dhcp)"" -eq 'Enabled'
+    $dns = @((Get-DnsClientServerAddress -InterfaceIndex $a.ifIndex -AddressFamily IPv4).ServerAddresses)
+    $wireless = ($a.NdisPhysicalMedium -eq 9) -or ($a.InterfaceDescription -match 'Wi-?Fi|Wireless|WLAN|802\.11')
+    if ($ip) { [PSCustomObject]@{ Name = $a.Name; Ip = $ip; Category = ""$cat""; Dhcp = $dhcp; Mac = ""$($a.MacAddress)"".Replace('-', ':'); Gateway = ""$gw""; Prefix = [int]$addr.PrefixLength; Dns = $dns; Wireless = [bool]$wireless } }
 }
 $vpns = @(Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and $_.InterfaceDescription -match 'VPN|TAP|WireGuard|OpenVPN|ZeroTier|Tailscale|Wintun|Fortinet|Cisco AnyConnect' } | ForEach-Object { $_.Name })
 $printers = @(Get-Printer | Where-Object {
@@ -73,6 +85,7 @@ $publicRules = @(Get-NetFirewallRule -Group '" + FpsGroup + @"' | Where-Object {
     Workgroup = (Get-CimInstance Win32_ComputerSystem).Workgroup
     Adapters = @($adapters); Vpns = $vpns; Printers = $printers; Shares = $shares
     PublicSharingRules = $publicRules
+    IsLaptop = [bool](Get-CimInstance Win32_Battery) -or [bool](@((Get-CimInstance Win32_SystemEnclosure).ChassisTypes) | Where-Object { $_ -in 8, 9, 10, 11, 12, 14, 18, 21, 30, 31, 32 })
 } | ConvertTo-Json -Depth 4 -Compress
 ";
 
@@ -235,6 +248,61 @@ else {{
     $why = if ($vpn) {{ ""A VPN is active ($($vpn -join ', ')) and is answering name lookups."" }} else {{ 'Local name lookup is not answering.' }}
     Report warn ""Use \\$hostIp instead of \\$hostName"" ""$why Paths by IP address work normally.""
 }}
+";
+
+    /// <summary>
+    /// Gives a wired adapter of THIS PC a fixed address outside the usual DHCP range (.200-.250),
+    /// keeping its gateway and DNS. Must run locally: run over WinRM, changing the address would
+    /// cut the session it runs in. Reverts to DHCP if the gateway stops answering afterwards.
+    /// </summary>
+    public static string GetStaticIpScript(string adapterName) => ReportFn + $@"
+$ErrorActionPreference = 'SilentlyContinue'
+$a = Get-NetAdapter -Name '{Q(adapterName)}'
+if (-not $a) {{ Report fail 'Network adapter not found' '{Q(adapterName)}'; return }}
+$idx = $a.ifIndex
+$cur = Get-NetIPAddress -InterfaceIndex $idx -AddressFamily IPv4 | Where-Object {{ $_.IPAddress -notlike '169.254*' }} | Select-Object -First 1
+$gw = (Get-NetRoute -InterfaceIndex $idx -DestinationPrefix '0.0.0.0/0' | Sort-Object RouteMetric | Select-Object -First 1).NextHop
+$dns = @((Get-DnsClientServerAddress -InterfaceIndex $idx -AddressFamily IPv4).ServerAddresses)
+if (-not $cur -or -not $gw) {{ Report fail 'No working connection on this adapter' 'Connect the network cable and check that the internet works, then try again.'; return }}
+if ($cur.PrefixLength -ne 24) {{ Report fail 'Unusual network size' ""Subnet /$($cur.PrefixLength) is not supported automatically; reserve the address in the router instead.""; return }}
+if ($dns.Count -eq 0) {{ $dns = @($gw) }}
+
+# Pick a free address from .200-.250: no ping reply and no neighbour entry
+$base = ($cur.IPAddress -split '\.')[0..2] -join '.'
+$new = $null
+foreach ($n in 200..250) {{
+    $cand = ""$base.$n""
+    if ($cand -eq $cur.IPAddress -or $cand -eq $gw) {{ continue }}
+    if (Test-Connection $cand -Count 1 -Quiet) {{ continue }}
+    if (Get-NetNeighbor -IPAddress $cand | Where-Object {{ $_.State -in 'Reachable', 'Stale', 'Permanent' }}) {{ continue }}
+    $new = $cand; break
+}}
+if (-not $new) {{ Report fail 'No free address found in .200-.250' 'Reserve the address in the router instead.'; return }}
+
+function Restore-Dhcp {{
+    Remove-NetIPAddress -InterfaceIndex $idx -AddressFamily IPv4 -Confirm:$false
+    Remove-NetRoute -InterfaceIndex $idx -DestinationPrefix '0.0.0.0/0' -Confirm:$false
+    Set-NetIPInterface -InterfaceIndex $idx -Dhcp Enabled
+    Set-DnsClientServerAddress -InterfaceIndex $idx -ResetServerAddresses
+    ipconfig /renew ""$($a.Name)"" | Out-Null
+}}
+
+Remove-NetIPAddress -InterfaceIndex $idx -AddressFamily IPv4 -Confirm:$false
+Remove-NetRoute -InterfaceIndex $idx -DestinationPrefix '0.0.0.0/0' -Confirm:$false
+Set-NetIPInterface -InterfaceIndex $idx -Dhcp Disabled
+New-NetIPAddress -InterfaceIndex $idx -IPAddress $new -PrefixLength 24 -DefaultGateway $gw | Out-Null
+Set-DnsClientServerAddress -InterfaceIndex $idx -ServerAddresses $dns
+Start-Sleep -Seconds 4
+
+$okGw = Test-Connection $gw -Count 2 -Quiet
+$okIp = (Get-NetIPAddress -InterfaceIndex $idx -AddressFamily IPv4).IPAddress -contains $new
+if (-not ($okGw -and $okIp)) {{
+    Restore-Dhcp
+    Report fail 'Fixed IP did not work, so it was undone' ""The router stopped answering on $new. The adapter is back on automatic (DHCP); reserve the address in the router instead.""
+    return
+}}
+Report ok ""Fixed IP set: $new"" ""Was $($cur.IPAddress) from DHCP. Gateway $gw and DNS $($dns -join ', ') were kept.""
+if (-not (Resolve-DnsName www.microsoft.com -QuickTimeout)) {{ Report warn 'The internet does not answer yet' 'The local network works. If the internet stays down, run the wizard again or set the adapter back to automatic in Settings.' }}
 ";
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
