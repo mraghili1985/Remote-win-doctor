@@ -120,27 +120,43 @@ $updateFiles = (Get-ChildItem 'C:\Windows\SoftwareDistribution\Download' -Recurs
 $topProcs = Get-Process | Sort-Object CPU -Descending | Select-Object -First 5 Id, ProcessName, @{N='CPU_Sec';E={[math]::Round($_.CPU, 1)}}, @{N='RAM_MB';E={[math]::Round($_.WorkingSet64/1MB, 1)}}
 
 # 9. Recent Critical System Events
-$events = Get-WinEvent -FilterHashtable @{LogName='System'; Level=1,2; StartTime=(Get-Date).AddHours(-24)} -MaxEvents 5 | 
-    Select-Object @{N='Time';E={$_.TimeCreated.ToString('HH:mm:ss')}}, ProviderName, Id, Message
+# DCOM 10010/10016 are documented by Microsoft as harmless and flood most logs, so they don't count
+$events = Get-WinEvent -FilterHashtable @{LogName='System'; Level=1,2; StartTime=(Get-Date).AddHours(-24)} -MaxEvents 50 |
+    Where-Object { -not ($_.ProviderName -eq 'Microsoft-Windows-DistributedCOM' -and $_.Id -in 10010, 10016) } |
+    Select-Object -First 5 @{N='Time';E={$_.TimeCreated.ToString('HH:mm:ss')}}, ProviderName, Id, Message
 
 # 10. Device Manager Problem Devices
-$problemDevices = @(Get-CimInstance Win32_PnPEntity | Where-Object { $_.ConfigManagerErrorCode -ne 0 } |
+# Code 22 (disabled on purpose, e.g. VMware/VPN adapters) and 45 (not plugged in) are not faults
+$problemDevices = @(Get-CimInstance Win32_PnPEntity | Where-Object { $_.ConfigManagerErrorCode -notin 0, 22, 45 } |
     Select-Object Name, DeviceID, ConfigManagerErrorCode)
 
 # 11. Composite health score - every deduction is tied to a real finding above
 $healthScore = 100
-$healthIssues = @()
-if ($channelMode -like '*Single*') { $healthScore -= 15; $healthIssues += 'Single-channel RAM (reduced memory bandwidth)' }
-if ($installedRamGb -lt 8) { $healthScore -= 10; $healthIssues += 'Less than 8 GB RAM' }
-if (@($disks | Where-Object { ""$($_.HealthStatus)"" -ne 'Healthy' }).Count -gt 0) { $healthScore -= 30; $healthIssues += 'A disk reports a health status other than Healthy' }
+$healthIssues = New-Object System.Collections.ArrayList
+# Each issue carries an Id so the UI can offer the matching fix or advice.
+# ArrayList.Add instead of += because a function can't assign to the caller's variable inside Invoke-Command.
+function Add-Issue($id, $text, $detail) { [void]$healthIssues.Add([PSCustomObject]@{ Id = $id; Text = $text; Detail = ""$detail"" }) }
+if ($channelMode -like '*Single*') { $healthScore -= 15; Add-Issue 'ram-single' 'Single-channel RAM (reduced memory bandwidth)' '' }
+if ($installedRamGb -lt 8) { $healthScore -= 10; Add-Issue 'ram-low' 'Less than 8 GB RAM' """" }
+if (@($disks | Where-Object { ""$($_.HealthStatus)"" -ne 'Healthy' }).Count -gt 0) { $healthScore -= 30; Add-Issue 'disk-unhealthy' 'A disk reports a health status other than Healthy' (($disks | Where-Object { ""$($_.HealthStatus)"" -ne 'Healthy' } | ForEach-Object { ""$($_.FriendlyName): $($_.HealthStatus)"" }) -join '; ') }
 $cFree = $systemDisk.PercentFree
-if ($cFree -ne $null -and $cFree -lt 5) { $healthScore -= 25; $healthIssues += 'Drive C: is almost full (under 5% free)' }
-elseif ($cFree -ne $null -and $cFree -lt 15) { $healthScore -= 10; $healthIssues += 'Drive C: has under 15% free space' }
-if ($sysDiskType -eq 'HDD') { $healthScore -= 15; $healthIssues += 'Windows is installed on a mechanical hard drive (HDD)' }
-if ($problemDevices.Count -gt 0) { $healthScore -= 10; $healthIssues += ""$($problemDevices.Count) device(s) with driver errors in Device Manager"" }
+$cDetail = if ($vols) { $c = $vols | Where-Object DriveLetter -eq 'C'; ""$($c.FreeGB) GB free of $($c.SizeGB) GB"" } else { '' }
+if ($cFree -ne $null -and $cFree -lt 5) { $healthScore -= 25; Add-Issue 'c-space' 'Drive C: is almost full (under 5% free)' $cDetail }
+elseif ($cFree -ne $null -and $cFree -lt 15) { $healthScore -= 10; Add-Issue 'c-space' 'Drive C: has under 15% free space' $cDetail }
+if ($sysDiskType -eq 'HDD') { $healthScore -= 15; Add-Issue 'sys-hdd' 'Windows is installed on a mechanical hard drive (HDD)' '' }
+if ($problemDevices.Count -gt 0) {
+    $healthScore -= 10
+    $codeText = @{ 1 = 'not configured'; 10 = 'cannot start'; 12 = 'not enough resources'; 18 = 'needs reinstalling'; 19 = 'registry problem'; 21 = 'being removed'; 22 = 'disabled'; 24 = 'not present or not working'; 28 = 'no driver installed'; 31 = 'driver failed to load'; 32 = 'driver service disabled'; 39 = 'driver corrupt or missing'; 43 = 'stopped after reporting a problem'; 45 = 'not connected' }
+    $devDetail = ($problemDevices | Select-Object -First 5 | ForEach-Object { $t = $codeText[[int]$_.ConfigManagerErrorCode]; if (-not $t) { $t = ""error $($_.ConfigManagerErrorCode)"" }; ""$($_.Name) ($t)"" }) -join '; '
+    Add-Issue 'devices' ""$($problemDevices.Count) device(s) with driver errors in Device Manager"" $devDetail
+}
 $critCount = @($events).Count
-if ($critCount -gt 0) { $healthScore -= [math]::Min(15, $critCount * 3); $healthIssues += ""$critCount critical system error(s) in the last 24 hours"" }
-if ($hiberboot -eq 1) { $healthScore -= 5; $healthIssues += 'Fast Startup is enabled' }
+if ($critCount -gt 0) {
+    $healthScore -= [math]::Min(15, $critCount * 3)
+    $evDetail = (@($events) | Select-Object -First 3 | ForEach-Object { $m = (""$($_.Message)"" -split ""`n"")[0].Trim(); if ($m.Length -gt 110) { $m = $m.Substring(0, 110) + '...' }; ""$($_.Time) $($_.ProviderName): $m"" }) -join ""`n""
+    Add-Issue 'events' ""$critCount critical system error(s) in the last 24 hours"" $evDetail
+}
+if ($hiberboot -eq 1) { $healthScore -= 5; Add-Issue 'fast-startup' 'Fast Startup is enabled' 'Shutdown saves the kernel state instead of a full shutdown, so driver problems carry over between sessions.' }
 if ($healthScore -lt 0) { $healthScore = 0 }
 
 $diagData = [PSCustomObject]@{
@@ -177,7 +193,7 @@ $diagData = [PSCustomObject]@{
     }
     Health = [PSCustomObject]@{
         Score = $healthScore
-        Issues = $healthIssues
+        Issues = @($healthIssues)
     }
     Graphics = [PSCustomObject]@{
         Controllers = @($gpus)

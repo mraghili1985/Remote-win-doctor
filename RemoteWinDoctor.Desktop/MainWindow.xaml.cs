@@ -169,7 +169,7 @@ public partial class MainWindow : Window
         el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt64(out var l) ? l : null;
 
     /// <summary>Score ring, colored grade line and one row per finding.</summary>
-    private void RenderHealth(int score, List<string> issues)
+    private void RenderHealth(int score, List<HealthIssue> issues)
     {
         var (brushKey, grade) = score switch
         {
@@ -207,21 +207,102 @@ public partial class MainWindow : Window
 
         HealthIssuesPanel.Children.Clear();
         for (int i = 0; i < issues.Count; i++)
-        {
-            var row = new Border { Style = (Style)FindResource(i == issues.Count - 1 ? "LastRowStyle" : "RowStyle") };
-            var panel = new StackPanel { Orientation = Orientation.Horizontal };
-            panel.Children.Add(new TextBlock
-            {
-                Text = "",
-                Style = (Style)FindResource("IconStyle"),
-                Foreground = (Brush)FindResource("WarningBrush"),
-                Margin = new Thickness(0, 0, 12, 0)
-            });
-            panel.Children.Add(new TextBlock { Text = issues[i], VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap });
-            row.Child = panel;
-            HealthIssuesPanel.Children.Add(row);
-        }
+            HealthIssuesPanel.Children.Add(BuildIssueRow(issues[i], i == issues.Count - 1));
         HealthIssuesSection.Visibility = issues.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>Issue row: what is wrong, the details, what to do, and a fix button where software can fix it.</summary>
+    private Border BuildIssueRow(HealthIssue issue, bool last)
+    {
+        var row = new Border { Style = (Style)FindResource(last ? "LastRowStyle" : "RowStyle") };
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var icon = new TextBlock { Text = "", Style = (Style)FindResource("IconStyle"), Foreground = (Brush)FindResource("WarningBrush"), VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 2, 12, 0) };
+        grid.Children.Add(icon);
+
+        var text = new StackPanel { Margin = new Thickness(0, 0, 12, 0) };
+        text.Children.Add(new TextBlock { Text = issue.Text, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
+        if (!string.IsNullOrWhiteSpace(issue.Detail))
+            text.Children.Add(new TextBlock { Text = issue.Detail.Replace("; ", "\n"), Style = (Style)FindResource("RowDescStyle") });
+        if (IssueFixes.Advice(issue.Id) is { } advice)
+            text.Children.Add(new TextBlock { Text = advice, Style = (Style)FindResource("RowDescStyle"), Foreground = (Brush)FindResource("AccentBrush") });
+        var result = new TextBlock { Style = (Style)FindResource("RowDescStyle"), Visibility = Visibility.Collapsed, Margin = new Thickness(0, 6, 0, 0) };
+        text.Children.Add(result);
+        Grid.SetColumn(text, 1);
+        grid.Children.Add(text);
+
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Top };
+        if (IssueFixes.FixLabel(issue.Id) is { } label)
+        {
+            var fix = new Button { Content = label, Style = (Style)FindResource("PrimaryButtonStyle"), Margin = new Thickness(8, 0, 0, 0) };
+            fix.Click += async (_, _) => await RunIssueFixAsync(issue, fix, icon, result);
+            buttons.Children.Add(fix);
+        }
+        if (issue.Id == "devices")
+            buttons.Children.Add(MakeLinkButton("Driver Installer", () => NavDrivers.IsChecked = true));
+        if (issue.Id == "events")
+            buttons.Children.Add(MakeLinkButton("Show all errors", () => { NavToolbox.IsChecked = true; BtnToolRecentErrors_Click(this, new RoutedEventArgs()); }));
+        if (issue.Id == "c-space")
+            buttons.Children.Add(MakeLinkButton("Largest files", () => { NavToolbox.IsChecked = true; BtnToolLargestFiles_Click(this, new RoutedEventArgs()); }));
+        Grid.SetColumn(buttons, 2);
+        grid.Children.Add(buttons);
+
+        row.Child = grid;
+        return row;
+    }
+
+    private Button MakeLinkButton(string label, Action onClick)
+    {
+        var b = new Button { Content = label, Style = (Style)FindResource("SecondaryButtonStyle"), Margin = new Thickness(8, 0, 0, 0) };
+        b.Click += (_, _) => onClick();
+        return b;
+    }
+
+    private async Task RunIssueFixAsync(HealthIssue issue, Button fix, TextBlock icon, TextBlock result)
+    {
+        var script = IssueFixes.GetFixScript(issue.Id);
+        if (script == null) return;
+        if (MessageBox.Show(IssueFixes.ConfirmText(issue.Id), issue.Text, MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            return;
+
+        fix.IsEnabled = false;
+        SetBusy(true, $"{IssueFixes.FixLabel(issue.Id)}...");
+        try
+        {
+            var res = await _executor.ExecuteAsync(TxtIp.Text.Trim(), TxtUser.Text.Trim(), TxtPass.Password, script, timeoutSeconds: 180);
+            LogTerminal(res.Output);
+            var step = OfficeNetworkWizard.ParseSteps(res.Output).FirstOrDefault()
+                ?? new WizardStep("fail", "The fix did not run", res.Error.Trim());
+            var brushKey = step.Status switch { "ok" => "SuccessBrush", "warn" => "WarningBrush", _ => "DangerBrush" };
+            result.Text = string.IsNullOrWhiteSpace(step.Detail) ? step.Title : $"{step.Title}. {step.Detail}";
+            result.Foreground = (Brush)FindResource(brushKey);
+            result.Visibility = Visibility.Visible;
+            if (step.Status == "ok")
+            {
+                icon.Text = "";
+                icon.Foreground = (Brush)FindResource("SuccessBrush");
+                fix.Content = "Done";
+            }
+            else
+            {
+                fix.IsEnabled = true;
+            }
+            TxtStatus.Text = $"{step.Title}. Run the scan again to update the score.";
+        }
+        catch (Exception ex)
+        {
+            result.Text = ex.Message;
+            result.Foreground = (Brush)FindResource("DangerBrush");
+            result.Visibility = Visibility.Visible;
+            fix.IsEnabled = true;
+        }
+        finally
+        {
+            SetBusy(false);
+        }
     }
 
     /// <summary>One card per physical disk: kind, status pill, SMART figures that are available, volumes and notes.</summary>
@@ -871,9 +952,13 @@ public partial class MainWindow : Window
                 if (root.TryGetProperty("Health", out var healthEl))
                 {
                     var score = GetInt(healthEl, "Score") ?? 0;
+                    // Issues are {Id, Text, Detail} objects; plain strings are accepted for older scripts
                     var issues = healthEl.TryGetProperty("Issues", out var iss) && iss.ValueKind == JsonValueKind.Array
-                        ? iss.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => x.Length > 0).ToList()
-                        : new List<string>();
+                        ? iss.EnumerateArray().Select(x => x.ValueKind == JsonValueKind.String
+                                ? new HealthIssue("", x.GetString() ?? "", "")
+                                : new HealthIssue(GetStr(x, "Id", ""), GetStr(x, "Text", ""), GetStr(x, "Detail", "")))
+                            .Where(x => x.Text.Length > 0).ToList()
+                        : new List<HealthIssue>();
 
                     RenderHealth(score, issues);
 
@@ -885,7 +970,7 @@ public partial class MainWindow : Window
                     if (disks != null)
                     {
                         var diskIssues = disks.Where(d => d.Status is "Bad" or "Caution")
-                            .Select(d => $"Disk {d.Model}: {(d.Status == "Bad" ? "failing" : "needs attention")}{(d.Notes.Count > 0 ? " - " + d.Notes[0] : "")}");
+                            .Select(d => new HealthIssue("disk-smart", $"Disk {d.Model}: {(d.Status == "Bad" ? "failing" : "needs attention")}", string.Join("; ", d.Notes)));
                         if (diskIssues.Any()) RenderHealth(score, issues.Concat(diskIssues).ToList());
                     }
                 }
