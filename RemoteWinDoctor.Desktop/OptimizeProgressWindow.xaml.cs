@@ -30,6 +30,7 @@ public partial class OptimizeProgressWindow : Window
     public OptimizeProgressWindow(string target, IReadOnlyList<string> steps)
     {
         InitializeComponent();
+        MaxHeight = SystemParameters.WorkArea.Height - 20;
         TxtTarget.Text = $"Target: {target}";
 
         for (int i = 0; i < steps.Count; i++)

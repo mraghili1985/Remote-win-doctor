@@ -28,7 +28,94 @@ public partial class MainWindow : Window
         UpdateModeBadge();
         UpdateHostIpLabel();
         Closed += (_, _) => _live?.Dispose();
+
+        FitToWorkArea();
+        SizeChanged += (_, _) => ApplyResponsiveLayout();
+        StateChanged += (_, _) => KeepMaximizedOffTaskbar();
     }
+
+    #region Responsive layout
+
+    private const double CompactSidebarBelow = 1100;   // window width (DIPs) where the sidebar becomes icons only
+    private const double TwoColumnCardsBelow = 900;    // content width where 4-up card rows wrap to 2
+    private readonly Dictionary<RadioButton, object> _navLabels = new();
+    private bool? _compact;
+
+    /// <summary>
+    /// The design size (1280x860) doesn't fit HD screens or 125-150% scaling, so start no larger
+    /// than the monitor's work area (taskbar excluded). Sizes are DIPs, so this follows Windows scaling.
+    /// </summary>
+    private void FitToWorkArea()
+    {
+        var wa = SystemParameters.WorkArea;
+        Width = Math.Min(Width, wa.Width - 24);
+        Height = Math.Min(Height, wa.Height - 24);
+        MinWidth = Math.Min(MinWidth, wa.Width);
+        MinHeight = Math.Min(MinHeight, wa.Height);
+    }
+
+    /// <summary>A borderless window maximizes over the taskbar unless its maximum size is the work area.</summary>
+    private void KeepMaximizedOffTaskbar()
+    {
+        if (WindowState == WindowState.Maximized)
+        {
+            var wa = SystemParameters.WorkArea;
+            MaxWidth = wa.Width + 14;
+            MaxHeight = wa.Height + 14;
+        }
+        else
+        {
+            MaxWidth = double.PositiveInfinity;
+            MaxHeight = double.PositiveInfinity;
+        }
+    }
+
+    private void ApplyResponsiveLayout()
+    {
+        var compact = ActualWidth < CompactSidebarBelow;
+        if (compact != _compact)
+        {
+            _compact = compact;
+            SidebarColumn.Width = new GridLength(compact ? 68 : 264);
+            foreach (var nav in SidebarNavPanel.Children.OfType<RadioButton>())
+            {
+                if (!_navLabels.ContainsKey(nav)) _navLabels[nav] = nav.Content;
+                nav.Content = compact ? null : _navLabels[nav];
+                nav.ToolTip = compact ? _navLabels[nav] : null;
+            }
+            TargetCardText.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+            TargetCardChevron.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+            TxtHostIpLabel.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+            BtnTargetCard.ToolTip = compact ? $"{TxtTargetSummary.Text} · {TxtModeBadge.Text}" : null;
+        }
+
+        var contentWidth = ActualWidth - SidebarColumn.Width.Value - 72;
+        var narrow = contentWidth < TwoColumnCardsBelow;
+        SetCardColumns(GridDiagCards, narrow ? 2 : 4);
+        SetCardColumns(GridRamSlots, narrow ? 2 : 4);
+        GridLiveCharts.Columns = contentWidth < 640 ? 1 : 3;
+        GridToolboxCards.Columns = contentWidth < 640 ? 1 : 2;
+        _narrowCards = narrow;
+    }
+
+    private bool _narrowCards;
+
+    /// <summary>Sets the column count and re-spaces the cards so every row lines up (the XAML margins assume 4 columns).</summary>
+    private static void SetCardColumns(System.Windows.Controls.Primitives.UniformGrid grid, int columns)
+    {
+        if (grid.Columns == columns && grid.Tag != null) return;
+        grid.Columns = columns;
+        grid.Tag = columns;
+        var cards = grid.Children.OfType<FrameworkElement>().ToList();
+        for (int i = 0; i < cards.Count; i++)
+        {
+            var col = i % columns;
+            var row = i / columns;
+            cards[i].Margin = new Thickness(col == 0 ? 0 : 6, row == 0 ? 0 : 12, col == columns - 1 ? 0 : 6, 0);
+        }
+    }
+
+    #endregion
 
     private void UpdateHostIpLabel()
     {
@@ -364,7 +451,7 @@ public partial class MainWindow : Window
             if (d.AvailableSpare is int sp) metrics.Add(("Spare blocks left", $"{sp}%"));
             if (metrics.Count > 0)
             {
-                var grid = new System.Windows.Controls.Primitives.UniformGrid { Columns = 4, Margin = new Thickness(0, 12, 0, 0) };
+                var grid = new System.Windows.Controls.Primitives.UniformGrid { Columns = _narrowCards ? 2 : 4, Margin = new Thickness(0, 12, 0, 0) };
                 foreach (var (label, value) in metrics)
                 {
                     var cell = new StackPanel { Margin = new Thickness(0, 0, 12, 8) };

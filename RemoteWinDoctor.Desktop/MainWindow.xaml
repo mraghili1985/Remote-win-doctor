@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="RemoteWinDoctor" Height="860" Width="1280"
-        MinHeight="720" MinWidth="1100"
+        MinHeight="540" MinWidth="820"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         FlowDirection="LeftToRight"
@@ -47,7 +47,7 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="264" />
+                <ColumnDefinition x:Name="SidebarColumn" Width="264" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
@@ -99,11 +99,11 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Border x:Name="BadgeMode" Grid.Column="0" Width="8" Height="8" CornerRadius="4" Background="{StaticResource SuccessBrush}" VerticalAlignment="Top" Margin="0,6,0,0" />
-                            <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                            <StackPanel x:Name="TargetCardText" Grid.Column="1" Margin="10,0,0,0">
                                 <TextBlock x:Name="TxtTargetSummary" Text="--" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                 <TextBlock x:Name="TxtModeBadge" Text="This PC" Style="{StaticResource CaptionStyle}" FontSize="12" Margin="0,3,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
                             </StackPanel>
-                            <TextBlock Grid.Column="2" Text="&#xE70E;" Style="{StaticResource IconStyle}" FontSize="10" />
+                            <TextBlock x:Name="TargetCardChevron" Grid.Column="2" Text="&#xE70E;" Style="{StaticResource IconStyle}" FontSize="10" />
                         </Grid>
                     </Button>
                     <TextBlock x:Name="TxtHostIpLabel" Text="Host: ..." Style="{StaticResource CaptionStyle}" Margin="4,8,0,0" />
@@ -299,7 +299,7 @@
                                     </Grid>
                                 </Border>
 
-                                <UniformGrid Columns="4" Margin="0,12,0,0">
+                                <UniformGrid x:Name="GridDiagCards" Columns="4" Margin="0,12,0,0">
                                     <Border Style="{StaticResource GlassPanelStyle}" Margin="0,0,6,0">
                                         <StackPanel>
                                             <TextBlock Text="Processor" Style="{StaticResource CaptionStyle}" />
@@ -340,7 +340,7 @@
                                         </StackPanel>
                                     </StackPanel>
                                 </Border>
-                                <UniformGrid Columns="4">
+                                <UniformGrid x:Name="GridRamSlots" Columns="4">
                                     <Border x:Name="SlotDimm1" Style="{StaticResource GlassPanelStyle}" Margin="0,0,6,0">
                                         <StackPanel>
                                             <TextBlock Text="Slot 1" Style="{StaticResource CaptionStyle}" />
@@ -419,7 +419,7 @@
                                 </Grid>
                                 <Border Style="{StaticResource GlassPanelStyle}">
                                     <StackPanel>
-                                        <UniformGrid Columns="3">
+                                        <UniformGrid x:Name="GridLiveCharts" Columns="3">
                                             <StackPanel Margin="0,0,10,0">
                                                 <Grid>
                                                     <TextBlock Text="Processor" Style="{StaticResource CaptionStyle}" FontSize="12" />
@@ -544,7 +544,7 @@
                                 <Button x:Name="BtnToolExportDrivers" Content="Back up drivers" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,8" Click="BtnToolExportDrivers_Click" />
                             </WrapPanel>
 
-                            <UniformGrid Grid.Row="2" Columns="2" Margin="0,8,0,14">
+                            <UniformGrid x:Name="GridToolboxCards" Grid.Row="2" Columns="2" Margin="0,8,0,14">
                                 <Border Style="{StaticResource GlassPanelStyle}" Margin="0,0,6,0">
                                     <StackPanel>
                                         <TextBlock Text="Startup programs" Style="{StaticResource RowTitleStyle}" />

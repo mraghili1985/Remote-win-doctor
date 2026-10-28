@@ -19,6 +19,9 @@ public partial class StartupManagerWindow : Window
     public StartupManagerWindow(string targetLabel, Func<string, Task<ExecutionResult>> run)
     {
         InitializeComponent();
+        // Never taller/wider than the screen (HD monitors, high scaling)
+        Height = Math.Min(Height, SystemParameters.WorkArea.Height - 20);
+        Width = Math.Min(Width, SystemParameters.WorkArea.Width - 20);
         _run = run;
         TxtTarget.Text = targetLabel;
         Loaded += async (_, _) => await LoadAsync();
