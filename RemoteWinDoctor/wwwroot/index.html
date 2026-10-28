@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RemoteWinDoctor | دستیار هوشمند عیب‌یابی، بهینه‌سازی و هوش مصنوعی ویندوز</title>
+    <meta name="description" content="سامانه یکپارچه مانیتورینگ ریموت، بهینه‌سازی، تزریق درایورها و ارزیابی توان پردازش هوش مصنوعی در شبکه محلی و اینترنت">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-title">RemoteWinDoctor</span>
+                    <span class="brand-subtitle">AI & System Optimizer Pro</span>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-item active" data-tab="tab-profiles" id="btn-nav-profiles">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    <span>پروفایل‌های سیستم</span>
+                </button>
+                <button class="nav-item" data-tab="tab-radar" id="btn-nav-radar">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/><line x1="12" y1="12" x2="19" y2="5"/></svg>
+                    <span>رادار اسکن شبکه</span>
+                </button>
+                <button class="nav-item" data-tab="tab-diagnostic" id="btn-nav-diagnostic">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    <span>عیب‌یابی عمیق</span>
+                </button>
+                <button class="nav-item" data-tab="tab-optimize" id="btn-nav-optimize">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    <span>جعبه بهینه‌سازی توربو</span>
+                </button>
+                <button class="nav-item" data-tab="tab-ai-lab" id="btn-nav-ai-lab">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <span>ارزیابی هوش مصنوعی (AI)</span>
+                </button>
+                <button class="nav-item" data-tab="tab-drivers" id="btn-nav-drivers">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                    <span>تزریق خودکار درایورها</span>
+                </button>
+                <button class="nav-item" data-tab="tab-devdb" id="btn-nav-devdb">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                    <span>تعمیرکار SQL Server & VS</span>
+                </button>
+                <button class="nav-item" data-tab="tab-rescue" id="btn-nav-rescue">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span>اورژانس بوت و نجات ویندوز</span>
+                </button>
+                <button class="nav-item" data-tab="tab-office" id="btn-nav-office">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                    <span>شبکه آفیس، پرینتر و تحریم‌شکن</span>
+                </button>
+                <button class="nav-item" data-tab="tab-terminal" id="btn-nav-terminal">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                    <span>ترمینال زنده پاورشل</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="host-pill">
+                    <span class="status-dot green"></span>
+                    <span class="host-info">میزبان: 192.168.1.75</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Target Machine Bar -->
+            <header class="target-bar glass-panel">
+                <div class="target-select-wrap" style="display: flex; align-items: center; gap: 8px;">
+                    <button type="button" class="btn btn-success" id="btn-quick-local" style="font-size: 12px; padding: 6px 12px; white-space: nowrap;">
+                        <span>💻 پایش این کامپیوتر (لوکال)</span>
+                    </button>
+                    <label for="select-profile">یا انتخاب ریموت:</label>
+                    <select id="select-profile" class="custom-select">
+                        <option value="">در حال دریافت لیست سیستم‌ها...</option>
+                    </select>
+                </div>
+
+                <div class="target-credentials">
+                    <div class="input-badge">
+                        <span class="badge-label">IP:</span>
+                        <input type="text" id="target-ip" value="192.168.1.100" class="mini-input">
+                        <span class="badge" id="target-mode-badge" style="margin-right: 6px; font-size: 11px;">ریموت</span>
+                    </div>
+                    <div class="input-badge">
+                        <span class="badge-label">User:</span>
+                        <input type="text" id="target-user" value="DELL" class="mini-input">
+                    </div>
+                    <div class="input-badge">
+                        <span class="badge-label">Pass:</span>
+                        <input type="password" id="target-pass" value="" class="mini-input">
+                    </div>
+                </div>
+
+                <div class="target-actions">
+                    <button class="btn btn-secondary" id="btn-test-connection">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 1l22 22"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                        <span>تست اتصال</span>
+                    </button>
+                    <button class="btn btn-secondary" id="btn-open-report">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        <span>گزارش رسمی کارفرما</span>
+                    </button>
+                    <button class="btn btn-danger" id="btn-remote-reboot">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                        <span>ری‌استارت ریموت</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Tab 1: Profiles -->
+            <section class="tab-pane active" id="tab-profiles">
+                <div class="section-header">
+                    <div>
+                        <h2>پروفایل‌های سیستم‌های شبکه</h2>
+                        <p class="section-desc">سیستم‌های ذخیره‌شده و آماده اتصال با یک کلیک</p>
+                    </div>
+                    <button class="btn btn-primary" id="btn-add-profile">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span>افزودن سیستم جدید</span>
+                    </button>
+                </div>
+
+                <div class="profiles-grid" id="profiles-container">
+                    <!-- Dynamic Profile Cards -->
+                </div>
+            </section>
+
+            <!-- Tab 2: Network Radar Scanner -->
+            <section class="tab-pane" id="tab-radar">
+                <div class="section-header">
+                    <div>
+                        <h2>رادار اسکن شبکه محلی (LAN)</h2>
+                        <p class="section-desc">شناسایی خودکار و موازی ۲۵۴ آی‌پی جهت یافتن سیستم‌های دارای WinRM باز</p>
+                    </div>
+                    <div class="radar-controls">
+                        <div class="input-badge">
+                            <span class="badge-label">Subnet:</span>
+                            <input type="text" id="radar-subnet" value="192.168.1" class="mini-input">
+                        </div>
+                        <button class="btn btn-primary" id="btn-start-scan">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/><line x1="12" y1="12" x2="19" y2="5"/></svg>
+                            <span>شروع اسکن رادار</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="radar-card glass-panel">
+                    <div class="radar-visual">
+                        <div class="radar-sweep" id="radar-sweep"></div>
+                        <div class="radar-grid"></div>
+                        <div class="radar-center"></div>
+                    </div>
+                    <div class="radar-status-bar">
+                        <span id="radar-status-text">آماده برای پویش شبکه محلی...</span>
+                        <div class="progress-bar-bg"><div class="progress-bar-fill" id="radar-progress"></div></div>
+                    </div>
+                </div>
+
+                <div class="table-container glass-panel mt-4">
+                    <table class="data-table" id="table-scan-results">
+                        <thead>
+                            <tr>
+                                <th>آی‌پی (IP)</th>
+                                <th>نام کامپیوتر</th>
+                                <th>پینگ (RTT)</th>
+                                <th>پورت ۵۹۸۵ (WinRM)</th>
+                                <th>وضعیت</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scan-results-tbody">
+                            <tr><td colspan="6" class="text-center text-muted">اسکن هنوز اجرا نشده است. دکمه «شروع اسکن رادار» را بزنید.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Tab 3: Deep Diagnostic -->
+            <section class="tab-pane" id="tab-diagnostic">
+                <div class="section-header">
+                    <div>
+                        <h2>عیب‌یابی عمیق و استخراج گلوگاه‌ها</h2>
+                        <p class="section-desc">پایش زنده مادربرد، فرکانس کلاک، کانال‌های رم، سلامت SSD و خطاهای ویندوز</p>
+                    </div>
+                    <button class="btn btn-primary" id="btn-run-diagnostic">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        <span>اجرای اسکن عمیق سیستم</span>
+                    </button>
+                </div>
+
+                <!-- Central System Health Gauge & Composite Score -->
+                <div class="health-overview-panel glass-panel mb-4">
+                    <div class="health-gauge-box">
+                        <div class="gauge-circle-wrapper">
+                            <svg class="health-gauge-svg" viewBox="0 0 120 120">
+                                <circle class="gauge-bg" cx="60" cy="60" r="50"></circle>
+                                <circle class="gauge-progress" id="health-gauge-circle" cx="60" cy="60" r="50"></circle>
+                            </svg>
+                            <div class="gauge-center-content">
+                                <span class="gauge-number" id="health-score-val">--</span>
+                                <span class="gauge-unit">از ۱۰۰</span>
+                            </div>
+                        </div>
+                        <div class="gauge-info-text">
+                            <div class="gauge-grade-badge" id="health-grade-badge">در انتظار اسکن</div>
+                            <h3 id="health-status-title">شاخص ترکیبی سلامت و پایداری سیستم</h3>
+                            <p id="health-status-desc">برای استخراج امتیاز جامع سلامت، روی دکمه «اجرای اسکن عمیق سیستم» کلیک کنید.</p>
+                        </div>
+                    </div>
+
+                    <div class="health-breakdown-grid">
+                        <div class="health-metric-item">
+                            <div class="metric-header">
+                                <span>پایداری سرویس‌ها و سرعت بوت</span>
+                                <strong id="score-metric-boot">--%</strong>
+                            </div>
+                            <div class="mini-bar-bg"><div class="mini-bar-fill" id="bar-metric-boot" style="width: 0%;"></div></div>
+                        </div>
+
+                        <div class="health-metric-item">
+                            <div class="metric-header">
+                                <span>سلامت دیسک و استوریج (Trim/SMART)</span>
+                                <strong id="score-metric-disk">--%</strong>
+                            </div>
+                            <div class="mini-bar-bg"><div class="mini-bar-fill" id="bar-metric-disk" style="width: 0%;"></div></div>
+                        </div>
+
+                        <div class="health-metric-item">
+                            <div class="metric-header">
+                                <span>کارایی رم و پهنای باند کانال‌ها</span>
+                                <strong id="score-metric-ram">--%</strong>
+                            </div>
+                            <div class="mini-bar-bg"><div class="mini-bar-fill" id="bar-metric-ram" style="width: 0%;"></div></div>
+                        </div>
+
+                        <div class="health-metric-item">
+                            <div class="metric-header">
+                                <span>تنظیمات برق و آزادسازی کلاک CPU</span>
+                                <strong id="score-metric-cpu">--%</strong>
+                            </div>
+                            <div class="mini-bar-bg"><div class="mini-bar-fill" id="bar-metric-cpu" style="width: 0%;"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="diag-cards-grid">
+                    <!-- CPU Card -->
+                    <div class="stat-card glass-panel">
+                        <div class="stat-header">
+                            <span class="stat-title">پردازنده مرکزی (CPU)</span>
+                            <span class="badge badge-cyan" id="diag-cpu-cores">-C / -T</span>
+                        </div>
+                        <div class="stat-value" id="diag-cpu-name">داده‌ای ثبت نشده</div>
+                        <div class="stat-meta" id="diag-cpu-clocks">کلاک پایه: - | کلاک زنده: -</div>
+                    </div>
+
+                    <!-- RAM Card -->
+                    <div class="stat-card glass-panel">
+                        <div class="stat-header">
+                            <span class="stat-title">حافظه رم (RAM)</span>
+                            <span class="badge" id="diag-ram-channel">وضعیت کانال: -</span>
+                        </div>
+                        <div class="stat-value" id="diag-ram-total">- GB</div>
+                        <div class="stat-meta" id="diag-ram-free">رم آزاد: - | اسلات‌های اشغال: -</div>
+                    </div>
+
+                    <!-- GPU Card -->
+                    <div class="stat-card glass-panel">
+                        <div class="stat-header">
+                            <span class="stat-title">کارت گرافیک (GPU)</span>
+                            <span class="badge badge-purple" id="diag-gpu-cuda">CUDA: -</span>
+                        </div>
+                        <div class="stat-value" id="diag-gpu-name">در انتظار بررسی</div>
+                        <div class="stat-meta" id="diag-gpu-vram">حافظه VRAM: -</div>
+                    </div>
+
+                    <!-- Storage Card -->
+                    <div class="stat-card glass-panel">
+                        <div class="stat-header">
+                            <span class="stat-title">دیسک اصلی (Drive C)</span>
+                            <span class="badge badge-emerald" id="diag-ssd-health">سلامت: -</span>
+                        </div>
+                        <div class="stat-value" id="diag-ssd-model">-</div>
+                        <div class="stat-meta" id="diag-ssd-free">فضای آزاد: -</div>
+                    </div>
+                </div>
+
+                <!-- Interactive Motherboard Schematic & Slot Topology -->
+                <div class="motherboard-panel glass-panel mt-4">
+                    <div class="board-header">
+                        <div class="board-title-group">
+                            <span class="board-chip-icon">⚡</span>
+                            <div>
+                                <h3>نقشه توپولوژی سخت‌افزار و معماری مادربرد (Hardware Schematic & Slot Topology)</h3>
+                                <p class="section-desc">تحلیل چینش اسلات‌های فیزیکی، تشخیص گلوگاه پهنای باند و وضعیت ماژول‌های رم</p>
+                            </div>
+                        </div>
+                        <div class="board-legend">
+                            <span class="legend-item"><span class="legend-color occupied"></span> ماژول فعال</span>
+                            <span class="legend-item"><span class="legend-color empty"></span> اسلات خالی</span>
+                            <span class="legend-item"><span class="legend-color alert"></span> گلوگاه تک‌کاناله</span>
+                        </div>
+                    </div>
+
+                    <!-- Motherboard PCB Layout -->
+                    <div class="pcb-canvas">
+                        <div class="pcb-grid-lines"></div>
+
+                        <!-- CPU Socket Visualizer -->
+                        <div class="pcb-section pcb-cpu-zone">
+                            <div class="socket-frame">
+                                <div class="socket-inner">
+                                    <span class="cpu-socket-label">SOCKET / BGA</span>
+                                    <div class="cpu-live-name" id="topo-cpu-name">در انتظار اسکن</div>
+                                    <div class="cpu-live-metrics">
+                                        <span class="cpu-tag" id="topo-cpu-cores">-- Cores</span>
+                                        <span class="cpu-tag" id="topo-cpu-clock">-- MHz</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- RAM DIMM Bank Visualizer -->
+                        <div class="pcb-section pcb-ram-zone">
+                            <div class="ram-bank-title">
+                                <span>بانک حافظه فیزیکی (Memory DIMM Slots)</span>
+                                <span class="badge" id="topo-channel-badge">--</span>
+                            </div>
+
+                            <div class="dimm-slots-grid" id="topo-dimm-slots-container">
+                                <!-- Dynamic DIMM slots rendered via JS -->
+                                <div class="dimm-slot empty" id="slot-dimm-1">
+                                    <div class="slot-pin"></div>
+                                    <div class="slot-body">
+                                        <div class="slot-head">اسلات ۱ (DIMM A)</div>
+                                        <div class="slot-meta">خالی (Empty Slot)</div>
+                                    </div>
+                                </div>
+                                <div class="dimm-slot active" id="slot-dimm-2">
+                                    <div class="slot-pin"></div>
+                                    <div class="slot-body">
+                                        <div class="slot-head">اسلات ۲ (DIMM B)</div>
+                                        <div class="slot-meta">8GB DDR4-2400</div>
+                                    </div>
+                                </div>
+                                <div class="dimm-slot empty" id="slot-dimm-3">
+                                    <div class="slot-pin"></div>
+                                    <div class="slot-body">
+                                        <div class="slot-head">اسلات ۳ (DIMM C)</div>
+                                        <div class="slot-meta">خالی (Empty Slot)</div>
+                                    </div>
+                                </div>
+                                <div class="dimm-slot empty" id="slot-dimm-4">
+                                    <div class="slot-pin"></div>
+                                    <div class="slot-body">
+                                        <div class="slot-head">اسلات ۴ (DIMM D)</div>
+                                        <div class="slot-meta">خالی (Empty Slot)</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Single Channel Bottleneck Alert Banner -->
+                            <div class="slot-bottleneck-alert" id="topo-bottleneck-banner" style="display: none;">
+                                <div class="alert-icon">⚠️</div>
+                                <div class="alert-text">
+                                    <strong>اخطار گلوگاه حافظه تک‌کاناله (Single-Channel Bottleneck):</strong>
+                                    <span>سیستم فقط با ۱ ماژول رم در حال کار است. پهنای باند حافظه روی ۶۴ بیت قفل شده و ۴۲٪ از توان پردازنده و چیپ گرافیک هدر می‌رود! با افزودن رم مشابه به اسلات خالی، حالت دوکاناله ۱۲۸ بیتی (Dual-Channel) فعال می‌شود.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Storage & Expansion Zone -->
+                        <div class="pcb-section pcb-storage-zone">
+                            <div class="storage-slot-card" id="topo-nvme-card">
+                                <div class="slot-type-badge">M.2 NVMe PCIe x4</div>
+                                <div class="storage-model" id="topo-nvme-model">درایو NVMe</div>
+                                <div class="storage-details" id="topo-nvme-details">سلامت: --% | سکتور: 4KB</div>
+                            </div>
+                            <div class="storage-slot-card" id="topo-gpu-card">
+                                <div class="slot-type-badge">PCIe x16 GPU Bus</div>
+                                <div class="storage-model" id="topo-gpu-model">کارت گرافیک</div>
+                                <div class="storage-details" id="topo-gpu-details">CUDA: -- | VRAM: --</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Diagnostic Details Section -->
+                <div class="details-grid mt-4">
+                    <div class="detail-box glass-panel">
+                        <h3>سرویس‌ها و تنظیمات سیستمی</h3>
+                        <ul class="check-list" id="diag-services-list">
+                            <li><span>سرویس SysMain:</span> <strong id="val-sysmain">-</strong></li>
+                            <li><span>پلن مصرف برق:</span> <strong id="val-power">-</strong></li>
+                            <li><span>قابلیت Fast Startup:</span> <strong id="val-fastboot">-</strong></li>
+                            <li><span>کش معیوب آپدیت:</span> <strong id="val-update-cache">-</strong></li>
+                            <li><span>آپتایم فعلی هسته:</span> <strong id="val-uptime">-</strong></li>
+                        </ul>
+                    </div>
+
+                    <div class="detail-box glass-panel">
+                        <h3>پروسه‌های پرمصرف پس‌زمینه</h3>
+                        <div class="table-mini-wrap">
+                            <table class="data-table mini-table" id="table-top-procs">
+                                <thead>
+                                    <tr>
+                                        <th>نام پروسه</th>
+                                        <th>CPU (ثانیه)</th>
+                                        <th>RAM (MB)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="top-procs-tbody">
+                                    <tr><td colspan="3" class="text-center text-muted">پس از تست نمایش داده می‌شود</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab 4: 1-Click Optimize -->
+            <section class="tab-pane" id="tab-optimize">
+                <div class="section-header">
+                    <div>
+                        <h2>بسته بهینه‌سازی توربو (۱-کلیک ایمن)</h2>
+                        <p class="section-desc">اعمال بسته استاندارد بهینه‌سازی بدون دستکاری فایل‌های شخصی کاربر</p>
+                    </div>
+                    <button class="btn btn-success btn-lg" id="btn-run-optimize">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        <span>شروع بهینه‌سازی خودکار ۶ مرحله‌ای</span>
+                    </button>
+                </div>
+
+                <div class="optimize-steps-grid">
+                    <div class="step-card glass-panel" id="opt-step-1">
+                        <div class="step-num">۱</div>
+                        <div class="step-info">
+                            <h4>غیرفعال‌سازی سرویس SysMain</h4>
+                            <p>جلوگیری از درگیری دیسک و هدررفت پهنای باند رم در پس‌زمینه</p>
+                        </div>
+                        <div class="step-status" id="status-step-1">آماده</div>
+                    </div>
+
+                    <div class="step-card glass-panel" id="opt-step-2">
+                        <div class="step-num">۲</div>
+                        <div class="step-info">
+                            <h4>تخلیه کش معیوب ویندوز آپدیت</h4>
+                            <p>حذف فایل‌های ناقص SoftwareDistribution و رفع لوپ MoUsoCoreWorker</p>
+                        </div>
+                        <div class="step-status" id="status-step-2">آماده</div>
+                    </div>
+
+                    <div class="step-card glass-panel" id="opt-step-3">
+                        <div class="step-num">۳</div>
+                        <div class="step-info">
+                            <h4>پاکسازی تمپ‌های ویندوز</h4>
+                            <p>تخلیه C:\Windows\Temp و LocalAppData\Temp</p>
+                        </div>
+                        <div class="step-status" id="status-step-3">آماده</div>
+                    </div>
+
+                    <div class="step-card glass-panel" id="opt-step-4">
+                        <div class="step-num">۴</div>
+                        <div class="step-info">
+                            <h4>فعال‌سازی پلن High Performance</h4>
+                            <p>آزادسازی کلاک حداکثری پردازنده و چیپ گرافیک</p>
+                        </div>
+                        <div class="step-status" id="status-step-4">آماده</div>
+                    </div>
+
+                    <div class="step-card glass-panel" id="opt-step-5">
+                        <div class="step-num">۵</div>
+                        <div class="step-info">
+                            <h4>غیرفعال‌سازی Fast Startup</h4>
+                            <p>جلوگیری از انباشت باگ‌های رم طی روزهای متوالی و تضمین بوت تمیز</p>
+                        </div>
+                        <div class="step-status" id="status-step-5">آماده</div>
+                    </div>
+
+                    <div class="step-card glass-panel" id="opt-step-6">
+                        <div class="step-num">۶</div>
+                        <div class="step-info">
+                            <h4>اجرای دستور SSD ReTrim</h4>
+                            <p>بهینه‌سازی بلاک‌های فلش NVMe برای افزایش سرعت خواندن/نوشتن</p>
+                        </div>
+                        <div class="step-status" id="status-step-6">آماده</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab 5: AI Readiness Lab -->
+            <section class="tab-pane" id="tab-ai-lab">
+                <div class="section-header">
+                    <div>
+                        <h2>آزمایشگاه سنجش توان هوش مصنوعی (AI Benchmark Lab)</h2>
+                        <p class="section-desc">تحلیل سازگاری سخت‌افزار سیستم برای اجرای مدل‌های زبانی محلی (LLM)، Whisper و Stable Diffusion</p>
+                    </div>
+                </div>
+
+                <div class="ai-score-container glass-panel">
+                    <div class="ai-dial-box">
+                        <div class="score-circle">
+                            <span class="score-number" id="ai-score-val">--</span>
+                            <span class="score-label">امتیاز AI</span>
+                        </div>
+                    </div>
+                    <div class="ai-assessment-box">
+                        <h3 id="ai-tier-title">سیستم مورد بررسی را انتخاب کنید</h3>
+                        <p id="ai-tier-desc">با کلیک روی دکمه عیب‌یابی در تب قبلی، تحلیل جامع هوش مصنوعی استخراج می‌شود.</p>
+                        <div class="recommendations-box" id="ai-recommendations">
+                            <!-- Dynamic recommendations -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ai-matrix-grid mt-4">
+                    <div class="matrix-card glass-panel" id="ai-app-llm">
+                        <div class="matrix-icon">💬</div>
+                        <h4>مدل‌های متنی (Llama 3, Qwen, Mistral)</h4>
+                        <div class="matrix-status" id="status-llm">نیاز به ارزیابی</div>
+                        <p class="matrix-desc">اجرای مدل‌های ۳ تا ۸ میلیارد پارامتری به صورت کاملاً لوکال و آفلاین</p>
+                    </div>
+
+                    <div class="matrix-card glass-panel" id="ai-app-whisper">
+                        <div class="matrix-icon">🎙️</div>
+                        <h4>تبدیل صوت به متن (OpenAI Whisper)</h4>
+                        <div class="matrix-status" id="status-whisper">نیاز به ارزیابی</div>
+                        <p class="matrix-desc">پیاده‌سازی سریع فایل‌های صوتی فارسی و انگلیسی با شتاب‌دهنده سخت‌افزاری</p>
+                    </div>
+
+                    <div class="matrix-card glass-panel" id="ai-app-sd">
+                        <div class="matrix-icon">🎨</div>
+                        <h4>تولید تصویر (Stable Diffusion / ComfyUI)</h4>
+                        <div class="matrix-status" id="status-sd">نیاز به ارزیابی</div>
+                        <p class="matrix-desc">تولید تصاویر هوش مصنوعی نیازمند حداقل ۶ گیگابایت VRAM انویدیا</p>
+                    </div>
+
+                    <div class="matrix-card glass-panel" id="ai-app-pytorch">
+                        <div class="matrix-icon">🔥</div>
+                        <h4>توسعه پایتورچ و دیپ لرنینگ (PyTorch CUDA)</h4>
+                        <div class="matrix-status" id="status-pytorch">نیاز به ارزیابی</div>
+                        <p class="matrix-desc">آموزش و فاین‌تیون مدل‌ها در محیط Python با هسته‌های موازی CUDA</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab 6: Driver Injector -->
+            <section class="tab-pane" id="tab-drivers">
+                <div class="section-header">
+                    <div>
+                        <h2>تزریق خودکار درایورها (Driver Injector)</h2>
+                        <p class="section-desc">اکسترکت سایلنت فایل‌های نصبی OEM (Dell, HP, Lenovo) و تزریق مستقیم به DriverStore ویندوز با PnPUtil</p>
+                    </div>
+                </div>
+
+                <div class="driver-box glass-panel">
+                    <div class="form-group">
+                        <label for="driver-folder-path">مسیر فولدر حاوی فایل‌های نصبی درایور (روی سیستم مقصد):</label>
+                        <div class="input-with-button">
+                            <input type="text" id="driver-folder-path" value="C:\Users\DELL\Desktop\dell" class="custom-input">
+                            <button class="btn btn-primary" id="btn-start-driver-install">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                <span>شروع استخراج و تزریق درایورها</span>
+                            </button>
+                        </div>
+                        <small class="form-hint">تمامی فایل‌های .EXE موجود در این مسیر به صورت خودکار با پارامتر /s /e استخراج شده و فایل‌های INF آن‌ها با pnputil بدون دخالت کاربر نصب می‌شوند.</small>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Dev & Database Toolkit -->
+            <section class="tab-pane" id="tab-devdb">
+                <div class="section-header">
+                    <div>
+                        <h2>تعمیرکار تخصصی SQL Server & Visual Studio</h2>
+                        <p class="section-desc">رفع ریشه‌ای باگ‌های آپدیت، قفل‌های سکتور سایز NVMe (ویندوز ۱۱) و بازسازی نصاب‌ها بدون نیاز به تعویض ویندوز</p>
+                    </div>
+                    <button class="btn btn-primary" id="btn-run-devdb-audit">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                        <span>اسکن و عیب‌یابی پیش‌نیازهای دیتابیس</span>
+                    </button>
+                </div>
+
+                <!-- Audit Status Cards -->
+                <div class="diag-cards-grid">
+                    <div class="stat-card glass-panel" id="card-nvme-status">
+                        <div class="stat-header">
+                            <span class="stat-title">پچ سکتورسایز NVMe (خطای 0x851A001A)</span>
+                            <span class="badge" id="badge-nvme-patch">در انتظار اسکن</span>
+                        </div>
+                        <div class="stat-value" id="val-nvme-patch">--</div>
+                        <div class="stat-meta" id="meta-nvme-patch">درایور stornvme در ویندوز ۱۱</div>
+                    </div>
+
+                    <div class="stat-card glass-panel" id="card-reboot-lock">
+                        <div class="stat-header">
+                            <span class="stat-title">قفل سمج Pending Reboot</span>
+                            <span class="badge" id="badge-reboot-lock">در انتظار اسکن</span>
+                        </div>
+                        <div class="stat-value" id="val-reboot-lock">--</div>
+                        <div class="stat-meta" id="meta-reboot-lock">مانع ستاپ SQL و Visual Studio</div>
+                    </div>
+
+                    <div class="stat-card glass-panel" id="card-wmi-status">
+                        <div class="stat-header">
+                            <span class="stat-title">سلامت ریپازیتوری WMI ویندوز</span>
+                            <span class="badge" id="badge-wmi-status">در انتظار اسکن</span>
+                        </div>
+                        <div class="stat-value" id="val-wmi-status">--</div>
+                        <div class="stat-meta" id="meta-wmi-status">بررسی قوانین ستاپ (Setup Rules)</div>
+                    </div>
+
+                    <div class="stat-card glass-panel" id="card-vs-status">
+                        <div class="stat-header">
+                            <span class="stat-title">کش پکیج‌های Visual Studio</span>
+                            <span class="badge badge-purple" id="badge-vs-status">--</span>
+                        </div>
+                        <div class="stat-value" id="val-vs-cache">--</div>
+                        <div class="stat-meta" id="meta-vs-status">C:\ProgramData\Microsoft\VisualStudio</div>
+                    </div>
+                </div>
+
+                <!-- 1-Click Fix Actions -->
+                <div class="section-header mt-4">
+                    <div>
+                        <h3>جعبه ابزار تعمیرات فوری (1-Click Solutions)</h3>
+                        <p class="section-desc">بدون نیاز به فرمت دیسک و پاک شدن اطلاعات، خطای مورد نظر را انتخاب و رفع نمایید</p>
+                    </div>
+                    <button class="btn btn-success" id="btn-fix-all-devdb">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        <span>اجرای پکیج تعمیر همه‌جانبه (All-In-One Fix)</span>
+                    </button>
+                </div>
+
+                <div class="devdb-actions-grid">
+                    <div class="devdb-card glass-panel">
+                        <div class="devdb-card-icon">⚡</div>
+                        <div class="devdb-card-body">
+                            <h4>فیکس باگ سکتور NVMe در ویندوز ۱۱ (SQL 0x851A001A)</h4>
+                            <p>فعال‌سازی شبیه‌سازی ۴۰۹۵ بایت در درایور stornvme جهت رفع کرش ستاپ SQL Server حین ایجاد master.mdf</p>
+                        </div>
+                        <button class="btn btn-primary btn-sm" id="btn-fix-nvme">اعمال پچ NVMe</button>
+                    </div>
+
+                    <div class="devdb-card glass-panel">
+                        <div class="devdb-card-icon">🔓</div>
+                        <div class="devdb-card-body">
+                            <h4>حذف قفل‌های سمج ری‌استارت (Pending Reboot Purge)</h4>
+                            <p>تخلیه کلیدهای PendingFileRenameOperations و فلگ‌های CBS/Windows Update در رجیستری</p>
+                        </div>
+                        <button class="btn btn-primary btn-sm" id="btn-fix-reboot">حذف قفل ری‌استارت</button>
+                    </div>
+
+                    <div class="devdb-card glass-panel">
+                        <div class="devdb-card-icon">🧹</div>
+                        <div class="devdb-card-body">
+                            <h4>اسکراب و ریست کامل نصاب Visual Studio</h4>
+                            <p>اجرای سایلنت ابزار رسمی InstallCleanup.exe مایکروسافت و تخلیه فایل‌های قفل‌شده در ProgramData</p>
+                        </div>
+                        <button class="btn btn-primary btn-sm" id="btn-fix-vs">اسکراب Visual Studio</button>
+                    </div>
+
+                    <div class="devdb-card glass-panel">
+                        <div class="devdb-card-icon">🩺</div>
+                        <div class="devdb-card-body">
+                            <h4>بازسازی و نجات مخزن WMI ویندوز</h4>
+                            <p>اجرای فرامین winmgmt /salvagerepository و /resetrepository جهت رفع فریز ستاپ‌های مایکروسافت</p>
+                        </div>
+                        <button class="btn btn-primary btn-sm" id="btn-fix-wmi">تعمیر مخزن WMI</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Windows Rescue & Boot Doctor -->
+            <section class="tab-pane" id="tab-rescue">
+                <div class="section-header">
+                    <div>
+                        <h2>اورژانس بوت، تعمیر BSOD و ریکاوری ویندوز</h2>
+                        <p class="section-desc">پایش سلامت لودر ویندوز، بازسازی فایل‌های بوت UEFI، تحلیل صفحات آبی (BSOD) و ساخت اسکریپت نجات آفلاین برای سیستم‌های خاموش</p>
+                    </div>
+                    <div class="target-actions">
+                        <button class="btn btn-primary" id="btn-run-rescue-audit">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                            <span>اسکن سلامت بوت و کرش‌ها</span>
+                        </button>
+                        <a href="/api/rescue/download-script" download class="btn btn-secondary" id="btn-download-rescue-script">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            <span>دانلود اسکریپت نجات فلش (.BAT)</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Boot Diagnostic Cards -->
+                <div class="diag-cards-grid">
+                    <div class="stat-card glass-panel" id="card-winre-status">
+                        <div class="stat-header">
+                            <span class="stat-title">پارتیشن ریکاوری ویندوز (WinRE)</span>
+                            <span class="badge" id="badge-winre-status">در انتظار اسکن</span>
+                        </div>
+                        <div class="stat-value" id="val-winre-status">--</div>
+                        <div class="stat-meta" id="meta-winre-status">Windows Recovery Environment</div>
+                    </div>
+
+                    <div class="stat-card glass-panel" id="card-bsod-status">
+                        <div class="stat-header">
+                            <span class="stat-title">تحلیل آخرین صفحه آبی (BSOD Dump)</span>
+                            <span class="badge" id="badge-bsod-status">در انتظار اسکن</span>
+                        </div>
+                        <div class="stat-value" id="val-bsod-status">--</div>
+                        <div class="stat-meta" id="meta-bsod-status">لاگ مینیدامپ و BugCheck کرش هسته</div>
+                    </div>
+
+                    <div class="stat-card glass-panel" id="card-bcd-status">
+                        <div class="stat-header">
+                            <span class="stat-title">پیکربندی بوت‌لودر UEFI (BCD)</span>
+                            <span class="badge" id="badge-bcd-status">در انتظار اسکن</span>
+                        </div>
+                        <div class="stat-value" id="val-bcd-status">--</div>
+                        <div class="stat-meta" id="meta-bcd-status">مهلت زمانی بوت و وضعیت SafeBoot</div>
+                    </div>
+
+                    <div class="stat-card glass-panel" id="card-pendingxml-status">
+                        <div class="stat-header">
+                            <span class="stat-title">لوپ آپدیت‌های معلق (Pending XML)</span>
+                            <span class="badge" id="badge-pendingxml-status">در انتظار اسکن</span>
+                        </div>
+                        <div class="stat-value" id="val-pendingxml-status">--</div>
+                        <div class="stat-meta" id="meta-pendingxml-status">فایل قفل WinSxS\pending.xml</div>
+                    </div>
+                </div>
+
+                <!-- 1-Click Rescue Actions -->
+                <div class="section-header mt-4">
+                    <div>
+                        <h3>جعبه ابزار امداد و نجات بوت (Boot Rescue Toolkit)</h3>
+                        <p class="section-desc">ایمن‌سازی سیستم پیش از خاموشی یا بازگردانی و رول‌بک سریع فایل‌های بوت</p>
+                    </div>
+                    <button class="btn btn-danger" id="btn-fix-all-rescue">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        <span>پکیج جامع اورژانس بوت (All-In-One Rescue)</span>
+                    </button>
+                </div>
+
+                <div class="devdb-actions-grid">
+                    <div class="devdb-card glass-panel">
+                        <div class="devdb-card-icon">🛡️</div>
+                        <div class="devdb-card-body">
+                            <h4>تعمیر و فعال‌سازی محیط Windows RE</h4>
+                            <p>فعال‌سازی پارتیشن نجات ویندوز و ثبت مجدد WinRE.wim جهت تضمین بالا آمدن منوی ریکاوری در شرایط بحرانی</p>
+                        </div>
+                        <button class="btn btn-primary btn-sm" id="btn-fix-enable-winre">فعال‌سازی WinRE</button>
+                    </div>
+
+                    <div class="devdb-card glass-panel">
+                        <div class="devdb-card-icon">⚡</div>
+                        <div class="devdb-card-body">
+                            <h4>بازسازی بوت‌لودر UEFI BCD (رفع Inaccessible Boot)</h4>
+                            <p>تزریق مجدد فایل‌های سالم بوت‌لودر به پارتیشن EFI با دستور bcdboot و حذف فلگ‌های گیرافتاده SafeBoot</p>
+                        </div>
+                        <button class="btn btn-primary btn-sm" id="btn-fix-rebuild-bcd">بازسازی بوت‌لودر BCD</button>
+                    </div>
+
+                    <div class="devdb-card glass-panel">
+                        <div class="devdb-card-icon">↩️</div>
+                        <div class="devdb-card-body">
+                            <h4>لغو آپدیت‌های مخرب گیرکرده (DISM Revert)</h4>
+                            <p>رول‌بک فوری بسته‌های آپدیت ناقص که مانع بالا آمدن ویندوز شده‌اند و پاکسازی قفل‌های WinSxS</p>
+                        </div>
+                        <button class="btn btn-primary btn-sm" id="btn-fix-revert-updates">رول‌بک آپدیت‌های مخرب</button>
+                    </div>
+
+                    <div class="devdb-card glass-panel">
+                        <div class="devdb-card-icon">🩺</div>
+                        <div class="devdb-card-body">
+                            <h4>ترمیم کامل فایل‌های هسته ویندوز (SFC + DISM)</h4>
+                            <p>اسکن عمیق مخزن فایل‌های محافظت‌شده سیستم و جایگزینی فایل‌های معیوب هسته با نسخه‌های اورجینال</p>
+                        </div>
+                        <button class="btn btn-primary btn-sm" id="btn-fix-repair-sysfiles">ترمیم فایل‌های هسته</button>
+                    </div>
+                </div>
+
+                <!-- Offline USB Rescue Instruction Card -->
+                <div class="glass-panel mt-4 p-4" style="padding: 24px; border-right: 4px solid var(--cyan);">
+                    <h3 style="color: var(--cyan); margin-bottom: 8px;">راهنمای نجات سیستم‌های خاموش (در صورتی که ویندوز اصلاً بالا نمی‌آید):</h3>
+                    <ol style="margin-right: 20px; color: var(--text-secondary); line-height: 1.8;">
+                        <li>روی دکمه <strong>«دانلود اسکریپت نجات فلش (.BAT)»</strong> در بالای صفحه کلیک کنید.</li>
+                        <li>فایل دانلودشده (<code>RescueBootDoctor.bat</code>) را داخل یک فلش مموری ساده کپی کنید.</li>
+                        <li>سیستم خراب را روشن کرده و ۲ بار حین بوت کلید پاور را نگه دارید تا وارد صفحه آبی <strong>Automatic Repair</strong> شود.</li>
+                        <li>به مسیر <strong>Advanced Options &gt; Troubleshoot &gt; Command Prompt</strong> بروید.</li>
+                        <li>فلش را وصل کرده، حرف درایو آن را تایپ کرده و فایل <code>RescueBootDoctor.bat</code> را اجرا کنید؛ تمام مراحل بازسازی بوت، رول‌بک آپدیت و تعمیر فایل‌های سیستمی به صورت ۱۰۰٪ خودکار انجام می‌شوند!</li>
+                    </ol>
+                </div>
+            </section>
+
+            <!-- Tab: Office LAN, Printer, Anti-Sanction & Crack Safety -->
+            <section class="tab-pane" id="tab-office">
+                <div class="section-header">
+                    <div>
+                        <h2>ویزارد شبکه اداری، پرینتر، ضدتحریم و امنیت کرک‌ها</h2>
+                        <p class="section-desc">پیکربندی شبکه محلی، رفع ارورهای 0x0000011b پرینتر، دور زدن تحریم‌های ۴۰۳، تست سرعت کابل LAN و حفاظت از فعال‌سازها</p>
+                    </div>
+                    <button class="btn btn-primary" id="btn-run-office-audit">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                        <span>ممیزی وضعیت شبکه و ابزارهای محلی</span>
+                    </button>
+                </div>
+
+                <!-- Diagnostic Cards -->
+                <div class="diag-cards-grid">
+                    <div class="stat-card glass-panel" id="card-office-net">
+                        <div class="stat-header">
+                            <span class="stat-title">پروفایل شبکه و شناسایی (Discovery)</span>
+                            <span class="badge" id="badge-office-net">در انتظار اسکن</span>
+                        </div>
+                        <div class="stat-value" id="val-office-net">--</div>
+                        <div class="stat-meta" id="meta-office-net">وضعیت دیده‌شدن در Network</div>
+                    </div>
+
+                    <div class="stat-card glass-panel" id="card-office-print">
+                        <div class="stat-header">
+                            <span class="stat-title">شیرینگ پرینتر (باگ 0x0000011b)</span>
+                            <span class="badge" id="badge-office-print">در انتظار اسکن</span>
+                        </div>
+                        <div class="stat-value" id="val-office-print">--</div>
+                        <div class="stat-meta" id="meta-office-print">کلید RpcAuthnLevelPrivacyEnabled</div>
+                    </div>
+
+                    <div class="stat-card glass-panel" id="card-office-dns">
+                        <div class="stat-header">
+                            <span class="stat-title">وضعیت DNS و دور زدن تحریم</span>
+                            <span class="badge" id="badge-office-dns">در انتظار اسکن</span>
+                        </div>
+                        <div class="stat-value" id="val-office-dns">--</div>
+                        <div class="stat-meta" id="meta-office-dns">سرویس‌های شکن / الکترو</div>
+                    </div>
+
+                    <div class="stat-card glass-panel" id="card-office-disk">
+                        <div class="stat-header">
+                            <span class="stat-title">استهلاک و دمای دیسک (S.M.A.R.T)</span>
+                            <span class="badge badge-emerald" id="badge-office-disk">--</span>
+                        </div>
+                        <div class="stat-value" id="val-office-disk">--</div>
+                        <div class="stat-meta" id="meta-office-disk">پایش پیش از خرابی فیزیکی هارد</div>
+                    </div>
+                </div>
+
+                <!-- 1-Click Action Cards -->
+                <div class="section-header mt-4">
+                    <div>
+                        <h3>جعبه ابزار راه‌اندازی و تعمیرات محلی (Local Toolbox)</h3>
+                        <p class="section-desc">عملیات متداول و ضروری دفاتر و شبکه‌های کاری بدون نیاز به اینترنت</p>
+                    </div>
+                </div>
+
+                <div class="devdb-actions-grid">
+                    <!-- LAN Setup -->
+                    <div class="devdb-card glass-panel">
+                        <div class="devdb-card-icon">🌐</div>
+                        <div class="devdb-card-body">
+                            <h4>راه‌اندازی خودکار شبکه اداری (Private + Discovery)</h4>
+                            <p>تبدیل شبکه به Private، روشن کردن سرویس‌های FDResPub/UPnP و باز کردن فایروال جهت دیده‌شدن کامپیوترها در Network</p>
+                        </div>
+                        <button class="btn btn-primary btn-sm" id="btn-action-setup-lan">راه‌اندازی شبکه اداری</button>
+                    </div>
+
+                    <!-- Printer 0x0000011b Fix -->
+                    <div class="devdb-card glass-panel">
+                        <div class="devdb-card-icon">🖨️</div>
+                        <div class="devdb-card-body">
+                            <h4>پچ باگ پرینتر شبکه‌ای (0x0000011b & 0x00000709)</h4>
+                            <p>اصلاح سطح احراز هویت RPC اسپولر پرینتر و فعال‌سازی دسترسی اشتراکی بدون پسورد (Guest Auth)</p>
+                        </div>
+                        <button class="btn btn-success btn-sm" id="btn-action-fix-printer">پچ باگ پرینتر</button>
+                    </div>
+
+                    <!-- Anti-Sanction DNS -->
+                    <div class="devdb-card glass-panel">
+                        <div class="devdb-card-icon">⚡</div>
+                        <div class="devdb-card-body">
+                            <h4>سوئیچ هوشمند DNS ضدتحریم و شتاب‌دهنده شبکه</h4>
+                            <p>فعال‌سازی فوری DNSهای معتبر ایرانی و بین‌المللی جهت دور زدن ارور 403، دانلود درایورها و توسعه نرم‌افزار بدون VPN</p>
+                        </div>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            <button class="btn btn-primary btn-sm" id="btn-dns-shecan">شکن (Shecan)</button>
+                            <button class="btn btn-secondary btn-sm" id="btn-dns-electro">الکترو (Electro)</button>
+                            <button class="btn btn-secondary btn-sm" id="btn-dns-radar">رادار گیم (Radar)</button>
+                            <button class="btn btn-secondary btn-sm" id="btn-dns-403">403.online</button>
+                            <button class="btn btn-secondary btn-sm" id="btn-dns-begzar">بگذر (Begzar)</button>
+                            <button class="btn btn-secondary btn-sm" id="btn-dns-cloudflare">کلودفلر (1.1.1.1)</button>
+                            <button class="btn btn-secondary btn-sm" id="btn-dns-google">گوگل (8.8.8.8)</button>
+                            <button class="btn btn-danger btn-sm" id="btn-dns-auto">ریست به خودکار (DHCP)</button>
+                        </div>
+                    </div>
+
+                    <!-- Automated Weekly Maintenance in Task Scheduler -->
+                    <div class="devdb-card glass-panel">
+                        <div class="devdb-card-icon">⏰</div>
+                        <div class="devdb-card-body">
+                            <h4>تنظیم سرویس نگهداری خودکار هفتگی (Task Scheduler)</h4>
+                            <p>ایجاد وظیفه سیستمی برای اجرای سایلنت SSD ReTrim، تخلیه Temp و کش آپدیت‌ها در یکشنبه‌ها ساعت ۰۳:۰۰ بامداد</p>
+                        </div>
+                        <button class="btn btn-success btn-sm" id="btn-schedule-weekly-maintenance">فعال‌سازی سرویس دوره‌ای خودکار</button>
+                    </div>
+
+                    <!-- Crack & Patch Protector -->
+                    <div class="devdb-card glass-panel">
+                        <div class="devdb-card-icon">🛡️</div>
+                        <div class="devdb-card-body">
+                            <h4>سپر محافظت از کرک‌ها و پچ‌های لایسنس</h4>
+                            <p>افزودن خودکار پوشه‌های نرم‌افزارهای مهندسی (Autodesk, Adobe, Office, KMS) به Exclusion List ویندوز دیفندر جهت جلوگیری از حذف اشتباهی پچ‌ها</p>
+                        </div>
+                        <button class="btn btn-primary btn-sm" id="btn-action-protect-cracks">حفاظت از فعال‌سازها</button>
+                    </div>
+
+                    <!-- LAN Speed Benchmark -->
+                    <div class="devdb-card glass-panel">
+                        <div class="devdb-card-icon">⏱️</div>
+                        <div class="devdb-card-body">
+                            <h4>تست پهنای باند و کیفیت کابل شبکه (LAN Speed Test)</h4>
+                            <p>تست سرعت خواندن و نوشتن واقعی برای کشف کابل‌های پوسیده Cat5، پورت‌های ۱۰۰ مگابیتی یا افت سیگنال وای‌فای</p>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" id="btn-action-speed-test">شروع تست پهنای باند</button>
+                    </div>
+
+                    <!-- Quick SMB Share Maker -->
+                    <div class="devdb-card glass-panel">
+                        <div class="devdb-card-icon">📁</div>
+                        <div class="devdb-card-body">
+                            <h4>ساخت سریع پوشه اشتراکی شبکه (SMB Share)</h4>
+                            <p>ایجاد خودکار پوشه با پرمیشن دسترسی کامل (Full Control) به کاربران شبکه</p>
+                            <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                <input type="text" id="input-share-path" value="C:\OfficeShare" placeholder="مسیر فولدر" class="mini-input" style="width: 140px;">
+                                <input type="text" id="input-share-name" value="OfficeShare" placeholder="نام اشتراک" class="mini-input" style="width: 110px;">
+                            </div>
+                            <div class="share-unc-preview" style="margin-top: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--cyan); display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                <span style="direction: ltr; unicode-bidi: embed;">\\<span id="preview-unc-ip">192.168.1.100</span>\<span id="preview-unc-name">OfficeShare</span></span>
+                                <button type="button" class="btn btn-secondary btn-xs" id="btn-copy-unc">کپی آدرس UNC</button>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-sm" id="btn-action-create-share">ساخت و شیر کردن پوشه</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab 7: Terminal -->
+            <section class="tab-pane" id="tab-terminal">
+                <div class="section-header">
+                    <div>
+                        <h2>ترمینال زنده و خروجی فرمان‌ها</h2>
+                        <p class="section-desc">مشاهده لاگ‌های زنده اجرای PowerShell روی سیستم مقصد و ارسال دستورات دلخواه</p>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" id="btn-clear-terminal">پاکسازی صفحه</button>
+                </div>
+
+                <div class="terminal-window glass-panel">
+                    <div class="terminal-header">
+                        <div class="term-dots">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                        </div>
+                        <span class="term-title">PowerShell WinRM Console</span>
+                    </div>
+                    <div class="terminal-quick-chips">
+                        <span class="chips-title">دستورات آماده:</span>
+                        <button type="button" class="chip-btn" data-cmd="ipconfig /all">کارت‌های شبکه</button>
+                        <button type="button" class="chip-btn" data-cmd="Get-Volume">دیسک‌ها و ظرفیت</button>
+                        <button type="button" class="chip-btn" data-cmd="Get-Service | Where-Object {$_.Status -eq 'Running'} | Select-Object -First 10 Name, DisplayName">سرویس‌های فعال</button>
+                        <button type="button" class="chip-btn" data-cmd="Get-HotFix | Select-Object -First 8 HotFixID, InstalledOn, Description">آخرین پچ‌های ویندوز</button>
+                        <button type="button" class="chip-btn" data-cmd="Get-ItemProperty HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run">برنامه‌های استارتاپ</button>
+                        <button type="button" class="chip-btn" data-cmd="Test-NetConnection 8.8.8.8 -Port 53">تست اینترنت</button>
+                    </div>
+                    <div class="terminal-body" id="terminal-output">
+                        <span class="term-line text-muted">[SYSTEM] کنسول مدیریتی RemoteWinDoctor آماده است.</span>
+                    </div>
+                    <div class="terminal-input-bar">
+                        <span class="term-prompt">PS ></span>
+                        <input type="text" id="custom-cmd-input" placeholder="دستور پاورشل دلخواه را تایپ کنید و Enter بزنید (مثال: hostname; Get-Process | select -first 5)...">
+                        <button class="btn btn-primary btn-sm" id="btn-send-custom-cmd">ارسال</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Add Profile Modal -->
+    <div class="modal-overlay" id="modal-add-profile">
+        <div class="modal-card glass-panel">
+            <div class="modal-header">
+                <h3>افزودن سیستم جدید</h3>
+                <button class="modal-close" id="btn-close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>نام نمایشی سیستم:</label>
+                    <input type="text" id="new-name" placeholder="مثال: لپ‌تاپ لنوو اتاق فنی" class="custom-input">
+                </div>
+                <div class="form-group">
+                    <label>آدرس آی‌پی (IP یا Tailscale):</label>
+                    <input type="text" id="new-ip" placeholder="192.168.1.100 یا 100.x.y.z" class="custom-input">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>نام کاربری ویندوز:</label>
+                        <input type="text" id="new-user" placeholder="مثال: Administrator یا DELL" class="custom-input">
+                    </div>
+                    <div class="form-group">
+                        <label>رمز عبور:</label>
+                        <input type="password" id="new-pass" placeholder="Password" class="custom-input">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>یادداشت یا مدل سیستم:</label>
+                    <input type="text" id="new-notes" placeholder="اختیاری..." class="custom-input">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btn-cancel-modal">انصراف</button>
+                <button class="btn btn-primary" id="btn-save-new-profile">ذخیره سیستم</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Executive Client Report Modal -->
+    <div class="modal-overlay" id="modal-client-report" style="display: none;">
+        <div class="modal-card report-modal-container">
+            <div class="report-controls-bar no-print">
+                <button class="btn btn-success" id="btn-print-report">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                    <span>چاپ گزارش یا ذخیره به صورت PDF</span>
+                </button>
+                <button class="btn btn-secondary" id="btn-close-report">بستن پنجره</button>
+            </div>
+
+            <div class="report-document" id="report-printable-area">
+                <!-- Formal Letterhead -->
+                <div class="report-header">
+                    <div class="report-brand">
+                        <div class="report-logo-badge">RemoteWinDoctor</div>
+                        <div>
+                            <h2>گزارش رسمی ممیزی فنی و بهینه‌سازی سیستم</h2>
+                            <p class="report-subtitle">Executive Technical Audit & System Optimization Certification</p>
+                        </div>
+                    </div>
+                    <div class="report-meta-box">
+                        <div><strong>شماره گزارش:</strong> <span id="rep-num">RWD-2026-8812</span></div>
+                        <div><strong>تاریخ صدور:</strong> <span id="rep-date">۱۴۰۵/۰۸/۰۵</span></div>
+                        <div><strong>کارشناس فنی:</strong> <span id="rep-tech">مهندس فناوری اطلاعات و پشتیبانی شبکه</span></div>
+                    </div>
+                </div>
+
+                <hr class="report-divider">
+
+                <!-- Client & System Identification -->
+                <div class="report-section">
+                    <h3 class="report-section-title">۱. مشخصات هویت و معماری سخت‌افزار سیستم</h3>
+                    <div class="report-grid-table">
+                        <div class="rep-cell"><strong>نام کامپیوتر:</strong> <span id="rep-hostname">DESKTOP-XXXXXXX</span></div>
+                        <div class="rep-cell"><strong>آدرس آی‌پی در شبکه:</strong> <span id="rep-ip">192.168.1.100</span></div>
+                        <div class="rep-cell"><strong>مدل سخت‌افزاری:</strong> <span id="rep-model">Dell Precision 7720</span></div>
+                        <div class="rep-cell"><strong>سیستم‌عامل:</strong> <span id="rep-os">Windows 11 Pro (Build 22000)</span></div>
+                        <div class="rep-cell"><strong>پردازنده (CPU):</strong> <span id="rep-cpu">Intel Core i7-6820HQ (4 Cores / 8 Threads)</span></div>
+                        <div class="rep-cell"><strong>وضعیت حافظه رم:</strong> <span id="rep-ram">8 GB | ماژول تک‌کاناله (Single-Channel)</span></div>
+                        <div class="rep-cell"><strong>حافظه ذخیره‌سازی:</strong> <span id="rep-storage">Samsung PM981 NVMe 256GB (Health: 98%)</span></div>
+                        <div class="rep-cell"><strong>پردازشگر گرافیکی:</strong> <span id="rep-gpu">NVIDIA Quadro P3000 (6GB GDDR5 - 1280 CUDA)</span></div>
+                    </div>
+                </div>
+
+                <!-- Before vs After Intervention Matrix -->
+                <div class="report-section mt-4">
+                    <h3 class="report-section-title">۲. ماتریس نتایج اقدامات و بهینه‌سازی (Before vs After)</h3>
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>بخش تحت بررسی</th>
+                                <th>وضعیت قبل از مداخله فنی</th>
+                                <th>وضعیت پس از بهینه‌سازی</th>
+                                <th>نتیجه حاصل</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>سرویس دیسک SysMain</strong></td>
+                                <td class="text-danger">فعال (درگیری پیوسته خواندن/نوشتن دیسک)</td>
+                                <td class="text-success">غیرفعال و متوقف‌شده (Disabled)</td>
+                                <td><span class="rep-badge success">آزادسازی ۱۰۰٪ هارد</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>کش فایل‌های موقت و آپدیت</strong></td>
+                                <td class="text-danger">انباشت فایل‌های ناقص در SoftwareDistribution</td>
+                                <td class="text-success">تخلیه کامل کش و ریست هسته BITS</td>
+                                <td><span class="rep-badge success">رفع لوپ مصرف CPU</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>پلن مدیریت مصرف انرژی</strong></td>
+                                <td class="text-warning">Balanced (محدودکننده فرکانس کاری)</td>
+                                <td class="text-success">فعال‌سازی حالت High Performance</td>
+                                <td><span class="rep-badge success">آزادسازی حداکثر کلاک</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>پایداری بوت (Fast Startup)</strong></td>
+                                <td class="text-danger">فعال (تجمع داده‌های معیوب ACPI در خاموشی)</td>
+                                <td class="text-success">غیرفعال و تنظیم بوت تمیز هسته</td>
+                                <td><span class="rep-badge success">تضمین پایداری رم</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>سلامت سلول‌های فلش SSD</strong></td>
+                                <td class="text-warning">عدم اجرای دوره‌ای دستور Trim دیسک C</td>
+                                <td class="text-success">اجرای موفقیت‌آمیز ReTrim روی NVMe</td>
+                                <td><span class="rep-badge success">حفظ حداکثر سرعت I/O</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>اشتراک‌گذاری پرینتر (0x0000011b)</strong></td>
+                                <td class="text-danger">خطای RPC در اتصال سیستم‌های شبکه به پرینتر</td>
+                                <td class="text-success">پچ رجیستری RpcAuthnLevelPrivacyEnabled</td>
+                                <td><span class="rep-badge success">حل قطعی باگ پرینتر</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>پچ سکتورسایز دیتابیس (SQL Win11)</strong></td>
+                                <td class="text-warning">عدم تطابق سکتور ۴۰۹۵ بایت در ویندوز ۱۱</td>
+                                <td class="text-success">فعال‌سازی شبیه‌سازی ForcedPhysicalSectorSize</td>
+                                <td><span class="rep-badge success">رفع خطای 0x851A001A</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>امنیت نرم‌افزارهای مهندسی و لایسنس</strong></td>
+                                <td class="text-danger">احتمال حذف اشتباهی پچ‌ها توسط دیفندر</td>
+                                <td class="text-success">افزودن مسیرهای کرک به Exclusion List</td>
+                                <td><span class="rep-badge success">حفاظت از نرم‌افزارها</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Final Evaluation & Signoff -->
+                <div class="report-section mt-4">
+                    <div class="report-final-grid">
+                        <div class="report-grade-box">
+                            <span class="report-grade-label">نمره نهایی سلامت و پایداری سیستم:</span>
+                            <div class="report-big-badge" id="rep-overall-badge">رتبه A+ (عالی - ۹۵/۱۰۰)</div>
+                            <p class="report-guarantee-text">تمامی تست‌های کارایی، بازسازی فایل‌های بوت و پایداری شبکه با موفقیت پشت سر گذاشته شد و سیستم بدون هیچ‌گونه حذف فایل شخصی به کارفرما تحویل گردید.</p>
+                        </div>
+                        <div class="report-sign-box">
+                            <div class="sign-title">تأییدیه کارشناس فناوری اطلاعات و شبکه</div>
+                            <div class="sign-space">
+                                <div class="digital-stamp">
+                                    <span>REMOTE WIN DOCTOR</span>
+                                    <span>CERTIFIED &amp; OPTIMIZED</span>
+                                    <span>✓ VERIFIED ✓</span>
+                                </div>
+                            </div>
+                            <div class="sign-date-line">امضا و تاریخ تحویل: .......................................</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    <!-- Dedicated Safety Reboot Confirmation Modal -->
+    <div class="modal-overlay" id="modal-reboot-confirm" style="display: none;">
+        <div class="modal-card glass-panel" style="max-width: 480px; border: 1px solid var(--rose); box-shadow: 0 0 35px rgba(244, 63, 94, 0.35);">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(244, 63, 94, 0.2);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 24px;">🚨</span>
+                    <h3 style="color: var(--rose);">تأییدیه امنیتی ری‌استارت سیستم</h3>
+                </div>
+                <button class="modal-close" id="btn-close-reboot-modal">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 20px 0;">
+                <div id="reboot-local-alert" class="slot-bottleneck-alert" style="display: none; background: rgba(244, 63, 94, 0.15); border: 1px solid var(--rose); margin-bottom: 16px;">
+                    <div class="alert-icon">⚠️</div>
+                    <div class="alert-text">
+                        <strong style="color: var(--rose);">توجه بحرانی: شما روی سیستم لوکال (میزبان فعلی) هستید!</strong>
+                        <span>اگر ادامه دهید، کامپیوتر خودتان فوراً ریست شده و کلیه برنامه‌های باز بسته خواهند شد!</span>
+                    </div>
+                </div>
+
+                <p style="color: var(--text-primary); margin-bottom: 12px;">
+                    شما در حال ارسال فرمان فوری و مستقیم ری‌استارت به سیستم زیر هستید:
+                </p>
+                
+                <div style="background: rgba(0, 0, 0, 0.4); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-glass); margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <span class="text-muted">آدرس IP مقصد:</span>
+                        <strong id="modal-reboot-target-ip" style="font-family: var(--font-mono); color: var(--cyan);">192.168.1.100</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span class="text-muted">نام سیستم هدف:</span>
+                        <strong id="modal-reboot-target-name">Client PC</strong>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" id="chk-reboot-confirm" style="width: 18px; height: 18px; accent-color: var(--rose);">
+                        <span style="font-size: 13px; color: var(--text-secondary);">از بسته‌شدن برنامه‌های باز و اجرای قطعی ریست اطمینان دارم.</span>
+                    </label>
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">
+                        جهت جلوگیری از ریست تصادفی، کلمه <strong style="color: var(--rose); font-family: var(--font-mono);">REBOOT</strong> را بنویسید:
+                    </label>
+                    <input type="text" id="input-reboot-confirm-text" placeholder="REBOOT" class="custom-input" style="font-family: var(--font-mono); text-align: center; font-size: 16px; letter-spacing: 2px;">
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between;">
+                <button class="btn btn-secondary" id="btn-cancel-reboot">انصراف (امن)</button>
+                <button class="btn btn-danger" id="btn-execute-confirmed-reboot" disabled style="opacity: 0.5;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                    <span>اجرای قطعی ری‌استارت</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

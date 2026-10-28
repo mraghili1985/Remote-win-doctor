@@ -1,0 +1,19 @@
+bin/
+obj/
+.vs/
+*.user
+
+# Build outputs and large binaries
+Portable/*.exe
+*.zip
+dell/
+extracted/
+
+# Runtime data: contains real hosts and credentials
+profiles.json
+
+# Before/after optimization snapshots (per-machine runtime data)
+snapshots/
+
+# Local agent notes: contain client hosts and credentials
+AGENTS.md
