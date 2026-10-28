@@ -364,7 +364,7 @@ public partial class MainWindow : Window
     {
         if (_live != null && TxtIp.Text.Trim() != _liveIp) StopLive("Target changed; monitoring stopped");
         UpdateModeBadge();
-        UpdateUncPreview();
+        UpdateWizardHostLabel();
     }
 
     private void BtnSwitchLocal_Click(object sender, RoutedEventArgs e)
@@ -1206,8 +1206,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void BtnSetupOfficeLan_Click(object sender, RoutedEventArgs e) => RunOfficeAction("setup-office-lan", "Office network setup");
-    private void BtnFixPrinterBug_Click(object sender, RoutedEventArgs e) => RunOfficeAction("fix-printer-bug", "Network printer fix");
     private void BtnProtectCracks_Click(object sender, RoutedEventArgs e) => RunOfficeAction("protect-cracks", "Defender exclusions for activators");
     private void BtnScheduleMaintenance_Click(object sender, RoutedEventArgs e) => RunOfficeAction("schedule-weekly-maintenance", "Weekly maintenance task");
 
@@ -1220,27 +1218,235 @@ public partial class MainWindow : Window
     private void BtnDnsGoogle_Click(object sender, RoutedEventArgs e) => RunOfficeAction("set-dns-google", "DNS: Google 8.8.8.8");
     private void BtnDnsAuto_Click(object sender, RoutedEventArgs e) => RunOfficeAction("reset-dns-auto", "DNS: back to automatic");
 
-    private void TxtSmbName_TextChanged(object sender, TextChangedEventArgs e) => UpdateUncPreview();
+    #endregion
 
-    private void UpdateUncPreview()
+    #region Office network wizard
+
+    private WizardHostInfo? _wizHost;
+    private string _wizHostIp = "", _wizUser = "", _wizPass = "", _wizAccount = "";
+    private string _wizPrinterShare = "", _wizFolderShare = "";
+    private const string NoPrinter = "Don't share a printer";
+
+    private void UpdateWizardHostLabel()
     {
-        if (TxtUncPreview == null) return;
-        var ip = TxtIp?.Text.Trim() ?? "127.0.0.1";
-        var name = TxtSmbName?.Text.Trim() ?? "OfficeShare";
-        TxtUncPreview.Text = $"\\\\{ip}\\{name}";
+        if (TxtWizHost == null) return;
+        var ip = TxtIp.Text.Trim();
+        TxtWizHost.Text = IsLocalTarget(ip) ? $"Host: This PC ({Environment.MachineName})" : $"Host: {ip}";
+        // A different target invalidates the previous check
+        if (_wizHost != null && ip != _wizTargetIp)
+        {
+            _wizHost = null;
+            WizHostOptions.Visibility = Visibility.Collapsed;
+            BtnWizConnect.IsEnabled = false;
+        }
     }
 
-    private void BtnCreateShare_Click(object sender, RoutedEventArgs e)
+    private string _wizTargetIp = "";
+
+    private async void BtnWizCheck_Click(object sender, RoutedEventArgs e)
     {
-        var fPath = TxtSmbPath.Text.Trim();
-        var sName = TxtSmbName.Text.Trim();
-        RunOfficeAction("create-smb-share", "Create network share", fPath, sName);
+        var ip = TxtIp.Text.Trim();
+        var user = TxtUser.Text.Trim();
+        var pass = TxtPass.Password;
+        bool isLocal = IsLocalTarget(ip);
+
+        SetBusy(true, "Checking the host...");
+        try
+        {
+            var res = await _executor.ExecuteAsync(ip, user, pass, OfficeNetworkWizard.GetHostCheckScript(), timeoutSeconds: 60);
+            var info = OfficeNetworkWizard.ParseHostInfo(res.Output);
+            if (info == null)
+            {
+                TxtStatus.Text = "Could not check the host.";
+                MessageBox.Show($"Could not read the host's network settings.\n\n{res.Error.Trim()}", "Office network wizard", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            _wizHost = info;
+            _wizTargetIp = ip;
+            _wizUser = user;
+            _wizPass = pass;
+            // The account others sign in with: the target-card account for a remote host, the current user for this PC
+            _wizAccount = isLocal ? Environment.UserName : user.Split('\\').Last();
+            _wizHostIp = isLocal ? info.Adapters.FirstOrDefault()?.Ip ?? ip : ip;
+
+            var adapters = info.Adapters.Count == 0 ? "no wired/Wi-Fi network found"
+                : string.Join(", ", info.Adapters.Select(a => $"{a.Name} {a.Ip} ({a.Category})"));
+            TxtWizHostInfo.Text = $"{info.Host} · workgroup {info.Workgroup} · {adapters}";
+
+            var notes = new List<string>();
+            if (info.Adapters.Any(a => a.Category == "Public")) notes.Add("The network is set to Public; setup will switch it to Private.");
+            if (info.PublicSharingRules > 0) notes.Add($"Sharing is currently open on public networks ({info.PublicSharingRules} firewall rules); setup will close it.");
+            if (info.Vpns.Count > 0) notes.Add($"A VPN is active on the host ({string.Join(", ", info.Vpns)}); other PCs may need to use the IP address instead of the name.");
+            if (info.Printers.Count == 0) notes.Add("No physical printer is installed on the host. To share one, install it and its driver there first, then check again.");
+            if (isLocal) notes.Add("This PC is the host: others will sign in with your Windows account, so it must have a password.");
+            TxtWizHostNotes.Text = string.Join("\n", notes.Select(n => "• " + n));
+            WizHostNotes.Visibility = notes.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+            CmbWizPrinter.Items.Clear();
+            CmbWizPrinter.Items.Add(NoPrinter);
+            foreach (var p in info.Printers) CmbWizPrinter.Items.Add(p.Name);
+            CmbWizPrinter.SelectedIndex = info.Printers.Count > 0 ? 1 : 0;
+
+            TxtWizAccount.Text = $"Access is password-protected: other PCs sign in as {info.Host}\\{_wizAccount}.";
+            WizHostOptions.Visibility = Visibility.Visible;
+            WizHostResults.Visibility = Visibility.Collapsed;
+            WizClientResults.Visibility = Visibility.Collapsed;
+            BtnWizConnect.IsEnabled = false;
+            TxtWizClientDesc.Text = isLocal
+                ? "This PC is the host, so there is nothing to connect here. Connect the other PCs with step 3."
+                : "Saves the host's sign-in for this Windows user, connects the printer and tests the folder with a temporary file.";
+            UpdateWizardManualSteps();
+            TxtStatus.Text = $"Host {info.Host} checked.";
+        }
+        catch (Exception ex)
+        {
+            TxtStatus.Text = $"Error: {ex.Message}";
+            MessageBox.Show(ex.Message, "Office network wizard", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            SetBusy(false);
+        }
     }
 
-    private void BtnCopyUnc_Click(object sender, RoutedEventArgs e)
+    private async void BtnWizSetupHost_Click(object sender, RoutedEventArgs e)
     {
-        Clipboard.SetText(TxtUncPreview.Text);
-        MessageBox.Show($"Network path copied to the clipboard:\n{TxtUncPreview.Text}", "Copied", MessageBoxButton.OK, MessageBoxImage.Information);
+        if (_wizHost == null) return;
+        var printer = CmbWizPrinter.SelectedItem as string ?? "";
+        if (printer == NoPrinter) printer = "";
+        var existing = _wizHost.Printers.FirstOrDefault(p => p.Name == printer);
+        _wizPrinterShare = printer.Length == 0 ? ""
+            : existing is { Shared: true } && existing.ShareName.Length > 0 ? existing.ShareName
+            : MakeShareName(printer);
+        var folder = TxtWizFolder.Text.Trim();
+        var shareName = TxtWizShareName.Text.Trim();
+        _wizFolderShare = folder.Length == 0 ? "" : MakeShareName(shareName.Length > 0 ? shareName : "Shared");
+
+        if (printer.Length == 0 && folder.Length == 0)
+        {
+            MessageBox.Show("Choose a printer or a folder to share.", "Office network wizard", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var summary = new List<string> { "• Set the LAN to Private and allow sharing only on Private networks", "• Close sharing on public networks" };
+        if (printer.Length > 0) summary.Add($"• Share the printer \"{printer}\" as {_wizPrinterShare}");
+        if (folder.Length > 0) summary.Add($"• Share {folder} as {_wizFolderShare} (created if missing)");
+        summary.Add($"• Access: sign in as {_wizHost.Host}\\{_wizAccount}");
+        if (MessageBox.Show($"Apply these changes on {_wizHost.Host}?\n\n{string.Join("\n", summary)}", "Set up host",
+                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            return;
+
+        SetBusy(true, "Setting up the host...");
+        try
+        {
+            var script = OfficeNetworkWizard.GetHostSetupScript(printer, _wizPrinterShare, folder, _wizFolderShare, _wizAccount);
+            var res = await _executor.ExecuteAsync(_wizTargetIp, _wizUser, _wizPass, script, timeoutSeconds: 120);
+            LogTerminal(res.Output);
+            var steps = OfficeNetworkWizard.ParseSteps(res.Output);
+            if (steps.Count == 0) steps.Add(new WizardStep("fail", "Setup did not run", res.Error.Trim()));
+            RenderWizardSteps(WizHostResults, WizHostResultsPanel, steps);
+
+            var failed = steps.Count(s => s.Status == "fail");
+            BtnWizConnect.IsEnabled = failed == 0 && !IsLocalTarget(_wizTargetIp);
+            UpdateWizardManualSteps();
+            TxtStatus.Text = failed == 0 ? "Host is set up." : $"Host setup finished with {failed} problem(s); see the list.";
+        }
+        catch (Exception ex)
+        {
+            TxtStatus.Text = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    private async void BtnWizConnect_Click(object sender, RoutedEventArgs e)
+    {
+        if (_wizHost == null) return;
+        SetBusy(true, "Connecting this PC...");
+        try
+        {
+            var script = OfficeNetworkWizard.GetClientSetupScript(_wizHostIp, _wizHost.Host, _wizAccount, _wizPrinterShare, _wizFolderShare);
+            // Runs locally as the signed-in user; the host password goes in via the environment, not the script file
+            var res = await _executor.ExecuteAsync("127.0.0.1", "", "", script, timeoutSeconds: 180,
+                secretEnv: new Dictionary<string, string> { ["RWD_SHARE_PASS"] = _wizPass });
+            LogTerminal(res.Output);
+            var steps = OfficeNetworkWizard.ParseSteps(res.Output);
+            if (steps.Count == 0) steps.Add(new WizardStep("fail", "Connection did not run", res.Error.Trim()));
+            RenderWizardSteps(WizClientResults, WizClientResultsPanel, steps);
+            var failed = steps.Count(s => s.Status == "fail");
+            TxtStatus.Text = failed == 0 ? "This PC is connected." : $"{failed} problem(s) connecting this PC; see the list.";
+        }
+        catch (Exception ex)
+        {
+            TxtStatus.Text = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    private void RenderWizardSteps(Border card, StackPanel panel, List<WizardStep> steps)
+    {
+        panel.Children.Clear();
+        for (int i = 0; i < steps.Count; i++)
+        {
+            var s = steps[i];
+            var (glyph, brush) = s.Status switch
+            {
+                "ok" => ("\uE73E", "SuccessBrush"),
+                "warn" => ("\uE7BA", "WarningBrush"),
+                "fail" => ("\uE711", "DangerBrush"),
+                _ => ("\uE946", "AccentBrush")
+            };
+            var row = new Border { Style = (Style)FindResource(i == steps.Count - 1 ? "LastRowStyle" : "RowStyle"), Padding = new Thickness(16, 10, 16, 10) };
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.Children.Add(new TextBlock { Text = glyph, Style = (Style)FindResource("IconStyle"), Foreground = (Brush)FindResource(brush), VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 2, 12, 0) });
+            var text = new StackPanel();
+            text.Children.Add(new TextBlock { Text = s.Title, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
+            if (!string.IsNullOrWhiteSpace(s.Detail))
+                text.Children.Add(new TextBlock { Text = s.Detail, Style = (Style)FindResource("RowDescStyle") });
+            Grid.SetColumn(text, 1);
+            grid.Children.Add(text);
+            row.Child = grid;
+            panel.Children.Add(row);
+        }
+        card.Visibility = Visibility.Visible;
+    }
+
+    private void UpdateWizardManualSteps()
+    {
+        if (_wizHost == null) return;
+        var lines = new List<string>
+        {
+            $"1. Press Win + R, type \\\\{_wizHostIp} and press Enter.",
+            $"2. Sign in as {_wizHost.Host}\\{_wizAccount} with that account's password, and tick \"Remember my credentials\"."
+        };
+        int n = 3;
+        if (_wizPrinterShare.Length > 0) lines.Add($"{n++}. Double-click {_wizPrinterShare} to connect the printer (Windows installs the driver; this may need an administrator).");
+        if (_wizFolderShare.Length > 0) lines.Add($"{n++}. Right-click {_wizFolderShare} > Map network drive to give the folder a drive letter.");
+        if (_wizPrinterShare.Length == 0 && _wizFolderShare.Length == 0) lines.Add($"{n}. Run \"Set up host\" first to see the shared printer and folder.");
+        lines.Add("If the name doesn't work on a PC with a VPN, keep using the IP address above.");
+        TxtWizManual.Text = string.Join("\n", lines);
+    }
+
+    private void BtnWizCopySteps_Click(object sender, RoutedEventArgs e)
+    {
+        Clipboard.SetText(TxtWizManual.Text);
+        TxtStatus.Text = "Steps copied to the clipboard.";
+    }
+
+    /// <summary>Share names: letters, digits and dashes, so they are easy to type in \\host\name.</summary>
+    private static string MakeShareName(string name)
+    {
+        var s = System.Text.RegularExpressions.Regex.Replace(name, "[^A-Za-z0-9-]+", "-").Trim('-');
+        if (s.Length > 40) s = s[..40].Trim('-');
+        return s.Length == 0 ? "Shared" : s;
     }
 
     #endregion

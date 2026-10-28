@@ -728,30 +728,91 @@
                         <ScrollViewer x:Name="ViewOffice" Visibility="Collapsed" Padding="36,30,36,24">
                             <StackPanel>
                                 <TextBlock Text="Network, Printer &amp; DNS" Style="{StaticResource PageTitleStyle}" />
-                                <TextBlock Text="Office network setup, printer sharing fixes, DNS switching and shared folders." Style="{StaticResource PageDescStyle}" />
+                                <TextBlock Text="Share a printer and a folder between office PCs, plus DNS and maintenance tools." Style="{StaticResource PageDescStyle}" />
 
-                                <Border Style="{StaticResource ListCardStyle}" Margin="0,24,0,0">
+                                <TextBlock Text="Office network wizard" Style="{StaticResource SectionTitleStyle}" />
+
+                                <!-- Step 1: host -->
+                                <Border Style="{StaticResource GlassPanelStyle}">
                                     <StackPanel>
-                                        <Border Style="{StaticResource RowStyle}">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                                <StackPanel Margin="0,0,16,0">
-                                                    <TextBlock Text="Set up office network" Style="{StaticResource RowTitleStyle}" />
-                                                    <TextBlock Text="Private profile and Network Discovery services so the PC shows up under Network." Style="{StaticResource RowDescStyle}" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                            <StackPanel Margin="0,0,16,0">
+                                                <TextBlock Text="1. Host PC" Style="{StaticResource RowTitleStyle}" />
+                                                <TextBlock Text="The PC that has the printer or folder to share. This is the current target system; change it in the card at the bottom of the sidebar." Style="{StaticResource RowDescStyle}" />
+                                                <TextBlock x:Name="TxtWizHost" Text="--" FontWeight="SemiBold" Margin="0,8,0,0" />
+                                            </StackPanel>
+                                            <Button x:Name="BtnWizCheck" Grid.Column="1" Content="Check host" Style="{StaticResource PrimaryButtonStyle}" VerticalAlignment="Top" Click="BtnWizCheck_Click" />
+                                        </Grid>
+
+                                        <StackPanel x:Name="WizHostOptions" Visibility="Collapsed" Margin="0,14,0,0">
+                                            <TextBlock x:Name="TxtWizHostInfo" Style="{StaticResource RowDescStyle}" />
+                                            <Border x:Name="WizHostNotes" Background="{StaticResource WarningSoftBrush}" CornerRadius="6" Padding="12,8" Margin="0,10,0,0" Visibility="Collapsed">
+                                                <TextBlock x:Name="TxtWizHostNotes" Style="{StaticResource RowDescStyle}" Foreground="{StaticResource TextPrimaryBrush}" Margin="0" />
+                                            </Border>
+                                            <Grid Margin="0,6,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="160" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Margin="0,0,8,0">
+                                                    <TextBlock Text="Printer to share" Style="{StaticResource FieldLabelStyle}" />
+                                                    <ComboBox x:Name="CmbWizPrinter" />
                                                 </StackPanel>
-                                                <Button Grid.Column="1" Content="Run" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Center" Click="BtnSetupOfficeLan_Click" />
-                                            </Grid>
-                                        </Border>
-                                        <Border Style="{StaticResource RowStyle}">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                                <StackPanel Margin="0,0,16,0">
-                                                    <TextBlock Text="Printer sharing error (0x0000011b / 0x00000709)" Style="{StaticResource RowTitleStyle}" />
-                                                    <TextBlock Text="RpcAuthnLevelPrivacyEnabled and a Spooler restart." Style="{StaticResource RowDescStyle}" />
+                                                <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                                    <TextBlock Text="Folder to share (empty = none)" Style="{StaticResource FieldLabelStyle}" />
+                                                    <TextBox x:Name="TxtWizFolder" Text="C:\Shared" Style="{StaticResource MonoBoxStyle}" />
                                                 </StackPanel>
-                                                <Button Grid.Column="1" Content="Run" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Center" Click="BtnFixPrinterBug_Click" />
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="Share name" Style="{StaticResource FieldLabelStyle}" />
+                                                    <TextBox x:Name="TxtWizShareName" Text="Shared" Style="{StaticResource MonoBoxStyle}" />
+                                                </StackPanel>
                                             </Grid>
+                                            <TextBlock x:Name="TxtWizAccount" Style="{StaticResource CaptionStyle}" FontSize="12" Margin="0,10,0,0" />
+                                            <Button x:Name="BtnWizSetupHost" Content="Set up host" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Left" Margin="0,12,0,0" Click="BtnWizSetupHost_Click" />
+                                            <Border x:Name="WizHostResults" Style="{StaticResource ListCardStyle}" Margin="0,12,0,0" Visibility="Collapsed">
+                                                <StackPanel x:Name="WizHostResultsPanel" />
+                                            </Border>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Step 2: this PC as a client -->
+                                <Border Style="{StaticResource GlassPanelStyle}" Margin="0,10,0,0">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                            <StackPanel Margin="0,0,16,0">
+                                                <TextBlock Text="2. Connect this PC" Style="{StaticResource RowTitleStyle}" />
+                                                <TextBlock x:Name="TxtWizClientDesc" Text="Saves the host's sign-in for this Windows user, connects the printer and tests the folder with a temporary file." Style="{StaticResource RowDescStyle}" />
+                                            </StackPanel>
+                                            <Button x:Name="BtnWizConnect" Grid.Column="1" Content="Connect this PC" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Top" IsEnabled="False" Click="BtnWizConnect_Click" />
+                                        </Grid>
+                                        <Border x:Name="WizClientResults" Style="{StaticResource ListCardStyle}" Margin="0,12,0,0" Visibility="Collapsed">
+                                            <StackPanel x:Name="WizClientResultsPanel" />
                                         </Border>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Step 3: other PCs, by hand -->
+                                <Border Style="{StaticResource GlassPanelStyle}" Margin="0,10,0,0">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                            <StackPanel Margin="0,0,16,0">
+                                                <TextBlock Text="3. Other PCs in the office" Style="{StaticResource RowTitleStyle}" />
+                                                <TextBlock Text="Each user's sign-in and printer are stored per Windows user, so on every other PC do this once (or run RemoteWinDoctor there and use step 2):" Style="{StaticResource RowDescStyle}" />
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Content="Copy steps" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Top" Click="BtnWizCopySteps_Click" />
+                                        </Grid>
+                                        <TextBlock x:Name="TxtWizManual" Text="Check the host first." Style="{StaticResource RowDescStyle}" Foreground="{StaticResource TextPrimaryBrush}" LineHeight="21" Margin="0,10,0,0" />
+                                    </StackPanel>
+                                </Border>
+
+                                <TextBlock Text="Other tools" Style="{StaticResource SectionTitleStyle}" />
+                                <Border Style="{StaticResource ListCardStyle}">
+                                    <StackPanel>
                                         <Border Style="{StaticResource RowStyle}">
                                             <Grid>
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
@@ -787,33 +848,6 @@
                                         <Button Content="Google 8.8.8.8" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,8" Click="BtnDnsGoogle_Click" />
                                         <Button Content="Back to automatic (DHCP)" Style="{StaticResource GhostButtonStyle}" Margin="0,0,8,8" Click="BtnDnsAuto_Click" />
                                     </WrapPanel>
-                                </Border>
-
-                                <TextBlock Text="Shared folder (SMB)" Style="{StaticResource SectionTitleStyle}" />
-                                <Border Style="{StaticResource GlassPanelStyle}">
-                                    <StackPanel>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="180" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel Margin="0,0,8,0">
-                                                <TextBlock Text="Folder path" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,5" />
-                                                <TextBox x:Name="TxtSmbPath" Text="C:\OfficeShare" Style="{StaticResource MonoBoxStyle}" />
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="1" Margin="0,0,8,0">
-                                                <TextBlock Text="Share name" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,5" />
-                                                <TextBox x:Name="TxtSmbName" Text="OfficeShare" Style="{StaticResource MonoBoxStyle}" TextChanged="TxtSmbName_TextChanged" />
-                                            </StackPanel>
-                                            <Button Grid.Column="2" Content="Create share" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Bottom" Click="BtnCreateShare_Click" />
-                                        </Grid>
-                                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                            <TextBlock Text="Network path:" Style="{StaticResource CaptionStyle}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                            <TextBlock x:Name="TxtUncPreview" Text="\\192.168.1.100\OfficeShare" FontFamily="{StaticResource MonoFont}" VerticalAlignment="Center" FlowDirection="LeftToRight" />
-                                            <Button Content="&#xE8C8;" FontFamily="{StaticResource IconFont}" Style="{StaticResource GhostButtonStyle}" ToolTip="Copy" Margin="6,0,0,0" Click="BtnCopyUnc_Click" />
-                                        </StackPanel>
-                                    </StackPanel>
                                 </Border>
                             </StackPanel>
                         </ScrollViewer>

@@ -93,7 +93,7 @@ public class PowerShellExecutor
         return sb.ToString();
     }
 
-    private static async Task<(ProcessStartInfo Psi, string TempScript)> PrepareAsync(string ip, string username, string password, string scriptBlock, bool isLocal)
+    private static async Task<(ProcessStartInfo Psi, string TempScript)> PrepareAsync(string ip, string username, string password, string scriptBlock, bool isLocal, IReadOnlyDictionary<string, string>? secretEnv = null)
     {
         var tempScript = Path.Combine(Path.GetTempPath(), $"RemoteWinDoctor_{Guid.NewGuid():N}.ps1");
         // UTF-8 BOM so Windows PowerShell 5.1 parses Unicode/Persian characters
@@ -115,10 +115,13 @@ public class PowerShellExecutor
             psi.Environment["RWD_USER"] = username;
             psi.Environment["RWD_PASS"] = password;
         }
+        // Extra secrets for local scripts (read as $env:NAME), kept out of the temp .ps1 for the same reason
+        if (secretEnv != null)
+            foreach (var (k, v) in secretEnv) psi.Environment[k] = v;
         return (psi, tempScript);
     }
 
-    public async Task<ExecutionResult> ExecuteAsync(string ip, string username, string password, string scriptBlock, int timeoutSeconds = 120, Action<string>? liveOutputCallback = null)
+    public async Task<ExecutionResult> ExecuteAsync(string ip, string username, string password, string scriptBlock, int timeoutSeconds = 120, Action<string>? liveOutputCallback = null, IReadOnlyDictionary<string, string>? secretEnv = null)
     {
         var sw = Stopwatch.StartNew();
         bool isLocal = IsLocalTarget(ip);
@@ -130,7 +133,7 @@ public class PowerShellExecutor
             return new ExecutionResult { Success = false, ExitCode = -1, Error = EmptyPasswordError, Duration = sw.Elapsed };
         }
 
-        var (psi, tempScript) = await PrepareAsync(ip, username, password, scriptBlock, isLocal);
+        var (psi, tempScript) = await PrepareAsync(ip, username, password, scriptBlock, isLocal, secretEnv);
         var outputBuilder = new StringBuilder();
         var errorBuilder = new StringBuilder();
 
