@@ -375,6 +375,10 @@
                                     <TextBlock Text="Empty" Style="{StaticResource CaptionStyle}" Margin="6,0,0,0" VerticalAlignment="Center" />
                                 </StackPanel>
 
+                                <TextBlock Text="Storage" Style="{StaticResource SectionTitleStyle}" />
+                                <TextBlock x:Name="TxtStorageMessage" Text="Every disk in the PC, with SMART health. Filled in by &quot;Run scan&quot;." Style="{StaticResource RowDescStyle}" Margin="0,0,0,8" />
+                                <StackPanel x:Name="StoragePanel" />
+
                                 <StackPanel x:Name="HealthIssuesSection" Visibility="Collapsed">
                                     <TextBlock Text="Issues found" Style="{StaticResource SectionTitleStyle}" />
                                     <Border Style="{StaticResource ListCardStyle}">

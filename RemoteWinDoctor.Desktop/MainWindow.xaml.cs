@@ -224,6 +224,101 @@ public partial class MainWindow : Window
         HealthIssuesSection.Visibility = issues.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    /// <summary>One card per physical disk: kind, status pill, SMART figures that are available, volumes and notes.</summary>
+    private void RenderStorage(List<StorageDisk>? disks)
+    {
+        StoragePanel.Children.Clear();
+        if (disks == null || disks.Count == 0)
+        {
+            TxtStorageMessage.Text = "Could not read the disks.";
+            return;
+        }
+        var anyNeedsAdmin = disks.Any(d => d.Notes.Any(n => n.Contains("administrator")));
+        TxtStorageMessage.Text = anyNeedsAdmin
+            ? "SMART details (health %, power-on hours, bad sectors) need administrator rights: run RemoteWinDoctor as administrator. Remote PCs always connect as administrator."
+            : $"{disks.Count} disk(s). Health and counters come straight from each drive's SMART data.";
+
+        foreach (var d in disks)
+        {
+            var (statusText, brushKey, softKey) = d.Status switch
+            {
+                "Good" => ("Good", "SuccessBrush", "SuccessSoftBrush"),
+                "Caution" => ("Caution", "WarningBrush", "WarningSoftBrush"),
+                "Bad" => ("Bad", "DangerBrush", "DangerSoftBrush"),
+                _ => ("Unknown", "TextSecondaryBrush", "CardHoverBrush")
+            };
+            var card = new Border { Style = (Style)FindResource("GlassPanelStyle"), Margin = new Thickness(0, 0, 0, 10) };
+            var stack = new StackPanel();
+
+            // Header: model + tags on the left, status/health on the right
+            var header = new Grid();
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var title = new StackPanel { Orientation = Orientation.Horizontal };
+            title.Children.Add(new TextBlock { Text = d.Model, FontWeight = FontWeights.SemiBold, FontSize = 14, VerticalAlignment = VerticalAlignment.Center });
+            foreach (var tag in new[] { d.Kind, $"{d.SizeGB:0} GB", d.IsSystem ? "Windows" : null }.Where(t => !string.IsNullOrEmpty(t)))
+                title.Children.Add(new Border { Style = (Style)FindResource("TagStyle"), Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Child = new TextBlock { Text = tag, FontSize = 11, Foreground = (Brush)FindResource("AccentBrush") } });
+            header.Children.Add(title);
+
+            var status = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            if (d.HealthPercent is int hp)
+                status.Children.Add(new TextBlock { Text = $"{hp}%", FontSize = 20, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource(brushKey), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
+            status.Children.Add(new Border { Background = (Brush)FindResource(softKey), CornerRadius = new CornerRadius(4), Padding = new Thickness(8, 3, 8, 3), VerticalAlignment = VerticalAlignment.Center, Child = new TextBlock { Text = statusText, FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource(brushKey) } });
+            Grid.SetColumn(status, 1);
+            header.Children.Add(status);
+            stack.Children.Add(header);
+
+            // SMART figures that the drive actually reported
+            var metrics = new List<(string Label, string Value)>();
+            if (d.PowerOnHours is long poh) metrics.Add(("Power-on time", StorageHealthHelper.FormatHours(poh)));
+            if (d.TemperatureC is int t) metrics.Add(("Temperature", $"{t} °C"));
+            if (d.PowerCycles is long pc) metrics.Add(("Power cycles", $"{pc:N0}"));
+            if (d.WrittenTB is double tb) metrics.Add(("Total written", $"{tb:0.0} TB"));
+            if (d.Reallocated is long r) metrics.Add(("Reallocated sectors", r.ToString()));
+            if (d.Pending is long p) metrics.Add(("Pending sectors", p.ToString()));
+            if (d.Uncorrectable is long u) metrics.Add(("Unreadable sectors", u.ToString()));
+            if (d.MediaErrors is long me) metrics.Add(("Media errors", me.ToString()));
+            if (d.UnsafeShutdowns is long us) metrics.Add(("Unsafe shutdowns", $"{us:N0}"));
+            if (d.AvailableSpare is int sp) metrics.Add(("Spare blocks left", $"{sp}%"));
+            if (metrics.Count > 0)
+            {
+                var grid = new System.Windows.Controls.Primitives.UniformGrid { Columns = 4, Margin = new Thickness(0, 12, 0, 0) };
+                foreach (var (label, value) in metrics)
+                {
+                    var cell = new StackPanel { Margin = new Thickness(0, 0, 12, 8) };
+                    cell.Children.Add(new TextBlock { Text = label, Style = (Style)FindResource("CaptionStyle") });
+                    cell.Children.Add(new TextBlock { Text = value, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 2, 0, 0) });
+                    grid.Children.Add(cell);
+                }
+                stack.Children.Add(grid);
+            }
+
+            // Volumes with a usage bar
+            foreach (var v in d.Volumes)
+            {
+                var row = new Grid { Margin = new Thickness(0, 8, 0, 0) };
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(190) });
+                var usedFraction = v.SizeGB > 0 ? 1 - v.FreeGB / v.SizeGB : 0;
+                row.Children.Add(new TextBlock { Text = v.Letter, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+                var bar = new ProgressBar { Minimum = 0, Maximum = 1, Value = usedFraction, Height = 6, VerticalAlignment = VerticalAlignment.Center, Style = (Style)FindResource("LoadingBarStyle"), Foreground = (Brush)FindResource(usedFraction >= 0.9 ? "WarningBrush" : "AccentBrush") };
+                Grid.SetColumn(bar, 1);
+                row.Children.Add(bar);
+                var label = new TextBlock { Text = $"{v.FreeGB:0.#} GB free of {v.SizeGB:0.#} GB", Style = (Style)FindResource("RowDescStyle"), Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+                Grid.SetColumn(label, 2);
+                row.Children.Add(label);
+                stack.Children.Add(row);
+            }
+
+            foreach (var note in d.Notes.Where(n => !n.Contains("administrator")))
+                stack.Children.Add(new TextBlock { Text = note, Style = (Style)FindResource("RowDescStyle"), Foreground = (Brush)FindResource(d.Status is "Bad" or "Caution" ? brushKey : "TextSecondaryBrush"), Margin = new Thickness(0, 10, 0, 0) });
+
+            card.Child = stack;
+            StoragePanel.Children.Add(card);
+        }
+    }
+
     private static void FadeIn(FrameworkElement element)
     {
         element.Opacity = 0;
@@ -780,6 +875,18 @@ public partial class MainWindow : Window
                         : new List<string>();
 
                     RenderHealth(score, issues);
+
+                    // Per-disk SMART runs as its own script so a slow or failing disk query can't sink the main scan
+                    SetBusy(true, "Reading disk health (SMART)...");
+                    var storage = await _executor.ExecuteAsync(ip, user, pass, StorageHealthHelper.GetStorageScript(), timeoutSeconds: 90);
+                    var disks = StorageHealthHelper.Parse(storage.Output);
+                    RenderStorage(disks);
+                    if (disks != null)
+                    {
+                        var diskIssues = disks.Where(d => d.Status is "Bad" or "Caution")
+                            .Select(d => $"Disk {d.Model}: {(d.Status == "Bad" ? "failing" : "needs attention")}{(d.Notes.Count > 0 ? " - " + d.Notes[0] : "")}");
+                        if (diskIssues.Any()) RenderHealth(score, issues.Concat(diskIssues).ToList());
+                    }
                 }
 
                 LogTerminal("Deep diagnostics finished.");
@@ -1453,7 +1560,7 @@ public partial class MainWindow : Window
 
     #region System Health Toolbox
 
-    private async void RunToolboxTool(string script, string toolName)
+    private async void RunToolboxTool(string script, string toolName, Func<string, string>? format = null)
     {
         var ip = TxtIp.Text.Trim();
         var user = TxtUser.Text.Trim();
@@ -1476,7 +1583,7 @@ public partial class MainWindow : Window
         try
         {
             var res = await _executor.ExecuteAsync(ip, user, pass, script, timeoutSeconds: 60);
-            LogToolbox(res.Success ? res.Output.Trim() : $"[ERROR] {res.Error}");
+            LogToolbox(res.Success ? (format != null ? format(res.Output) : res.Output.Trim()) : $"[ERROR] {res.Error}");
         }
         catch (Exception ex)
         {
@@ -1495,7 +1602,8 @@ public partial class MainWindow : Window
     }
 
     private void BtnToolResourceSnapshot_Click(object sender, RoutedEventArgs e) => RunToolboxTool(ToolboxHelper.GetResourceSnapshotScript(), "Resource snapshot");
-    private void BtnToolDiskHealth_Click(object sender, RoutedEventArgs e) => RunToolboxTool(ToolboxHelper.GetDiskHealthScript(), "Physical disk health");
+    private void BtnToolDiskHealth_Click(object sender, RoutedEventArgs e) => RunToolboxTool(StorageHealthHelper.GetStorageScript(), "Disk health (SMART)",
+        output => StorageHealthHelper.Parse(output) is { } disks ? StorageHealthHelper.ToText(disks) : output.Trim());
     private void BtnToolBattery_Click(object sender, RoutedEventArgs e) => RunToolboxTool(ToolboxHelper.GetBatteryHealthScript(), "Battery health");
     private void BtnToolMemTest_Click(object sender, RoutedEventArgs e) => RunToolboxTool(ToolboxHelper.GetScheduleMemoryTestScript(), "Schedule RAM test");
     private void BtnToolRecentErrors_Click(object sender, RoutedEventArgs e) => RunToolboxTool(ToolboxHelper.GetRecentErrorsScript(), "Recent Windows errors");

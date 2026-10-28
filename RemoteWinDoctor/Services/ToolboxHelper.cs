@@ -1,4 +1,4 @@
-namespace RemoteWinDoctor.Services;
+﻿namespace RemoteWinDoctor.Services;
 
 /// <summary>One row of <see cref="ToolboxHelper.GetStartupEntriesScript"/> output.</summary>
 public class StartupEntry
@@ -67,26 +67,6 @@ try {
     }
 } catch {
     Write-Host 'Detailed wear data not available on this device (vendor-specific WMI class missing).'
-}
-";
-    }
-
-    public static string GetDiskHealthScript()
-    {
-        return @"
-Get-PhysicalDisk | ForEach-Object {
-    $disk = $_
-    Write-Host ""Disk: $($disk.FriendlyName) | Media: $($disk.MediaType) | Health: $($disk.HealthStatus)""
-    try {
-        $rel = $disk | Get-StorageReliabilityCounter -ErrorAction Stop
-        if ($rel.Temperature) { Write-Host ""  Temperature: $($rel.Temperature) C"" }
-        if ($null -ne $rel.Wear) { Write-Host ""  Wear Level: $($rel.Wear)%"" }
-        if ($rel.ReadErrorsUncorrected -or $rel.WriteErrorsUncorrected) {
-            Write-Host ""  [WARNING] Uncorrected errors - Read: $($rel.ReadErrorsUncorrected), Write: $($rel.WriteErrorsUncorrected)""
-        }
-    } catch {
-        Write-Host '  Detailed reliability counters not available for this disk.'
-    }
 }
 ";
     }
